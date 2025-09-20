@@ -12,7 +12,7 @@ static class Program
 	{
 		Console.WriteLine("""
 			Usage: CBindingGenerator [OPTIONS...] <input header file> [--clang-args|-A CLANG_ARGS...]
-
+			
 			Options with 1 argument:
 			 --output, -o		beef output file
 			 --name, -n		output namespace
@@ -20,11 +20,11 @@ static class Program
 			 --custom-linkage	custom linkage
 			 --using-dep, -d	using dependency
 			 --black-list, -b	type or function with this name will be excluded
-
+			
 			Other options:
 			 --help			prints this message
 			 --clang-args, -A	all arguments passed after this flag will be passed to clang
-
+			
 			Flags:
 			 --vulkan-like		marks the the library as vulkan like
 			""");

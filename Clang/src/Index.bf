@@ -298,7 +298,7 @@ extension Clang
 	 */
 	[Bitfield(.Public, .BitsAt(pos: 2, bits: 1), "StorePreamblesInMemory")]
 
-	private uint16 __bitfield_12777;
+	private uint32 __bitfield_12777;
 	/** The path to a directory, in which to store temporary PCH files. If null or
 	 *  empty, the default system temporary directory is used. These PCH files are
 	 *  deleted on clean exit but stay on disk if the program crashes or is killed.

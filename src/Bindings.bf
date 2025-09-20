@@ -640,7 +640,7 @@ static class CBindings
 			static void DumpBitfield(String output, int* bitFieldCurrentBlockSize, int* bitFieldTotalWidth, CXCursor uniqueSuffix, StringView doubleIndent)
 			{
 				output.Append(doubleIndent, "private uint");
-				(*bitFieldTotalWidth).ToString(output);
+				(*bitFieldCurrentBlockSize).ToString(output);
 				output.Append(" __bitfield_");
 				Clang.GetRangeEnd(Clang.GetCursorExtent(uniqueSuffix)).[Friend]int_data.ToString(output);
 				output.Append(";\n");
