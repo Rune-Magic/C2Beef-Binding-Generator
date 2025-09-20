@@ -117,38 +117,14 @@ static class CBindings
 
 	protected static bool IsOutParam(CXType paramType, LibraryInfo library, StringView paramSpelling, StringView lastParamSpelling, StringView docs)
 	{
-		if (paramType.kind == .Pointer && Clang.GetPointeeType(paramType).kind != .Void && (
+		return (paramType.kind == .Pointer && Clang.GetPointeeType(paramType).kind != .Void && (
 			(library.flags.HasFlag(.VulkanLike)
 				&& Clang.IsConstQualifiedType(Clang.GetPointeeType(paramType)) == 0
-				&& !(paramSpelling.EndsWith('s') && paramSpelling.StartsWith('p') && lastParamSpelling.EndsWith("Count", .OrdinalIgnoreCase)))))
-					return true;
-#if CLANG_BACKUP_BINDINGS
-		if (docs.IsEmpty || paramSpelling.IsEmpty) return false;
-		for (let i < docs.Length)
-		{
-			if (docs[i] != 'p') continue;
-			var str = docs[i...];
-			if (!str.StartsWith("param")) continue;
-			str..RemoveFromStart("param".Length)..TrimStart();
-			if (str.StartsWith("[in]")) continue;
-			if (str.StartsWith("[out]"))
-			{
-				str..RemoveFromStart("[out]".Length)..TrimStart();
-				return str.StartsWith(paramSpelling);
-			}
-			if (str.StartsWith(paramSpelling))
-			{
-				str..RemoveFromStart(paramSpelling.Length)..TrimStart();
-				return str.StartsWith("[out]");
-			}
-		}
-#endif
-		return false;
+				&& !(paramSpelling.EndsWith('s') && paramSpelling.StartsWith('p') && lastParamSpelling.EndsWith("Count", .OrdinalIgnoreCase)))));
 	}
 
 	protected static void FillOutParams(CXComment docs, bool[] outParams, Span<StringView> args)
 	{
-#if !CLANG_BACKUP_BINDINGS
 		let childCount = Clang.Comment_GetNumChildren(docs);
 		for (let i < childCount)
 		{
@@ -178,7 +154,6 @@ static class CBindings
 					break;
 				}
 		}
-#endif
 	}
 
 
@@ -307,38 +282,6 @@ static class CBindings
 	{
 		static bool DocString(String output, CXCursor cursor, bool newLine, StringView indent)
 		{
-#if CLANG_BACKUP_BINDINGS
-			StringView str = .(GetString!(Clang.Cursor_GetRawCommentText(cursor)));
-			if (str.IsEmpty) return false;
-			if (newLine) output.Append('\n');
-			bool multiline = false;
-			for (var line in str.Split('\n'))
-			{
-				output.Append(indent);
-				if (line..TrimStart().StartsWith("*/"))
-				{
-					output.Append(" */\n");
-					continue;
-				}
-				if (line.StartsWith('*')) line.RemoveFromStart(1);
-				if (line.StartsWith(' ')) line.RemoveFromStart(1);
-				if (line.StartsWith("/*"))
-				{
-					line..RemoveFromStart(3)..TrimStart();
-					output.Append("/** ");
-					multiline = true;
-				}
-				else if (multiline || !line.StartsWith('/')) output.Append(" *  ");
-				if (line.StartsWith(' ')) line.RemoveFromStart(1);
-				if (line.StartsWith('\\'))
-				{
-					output.Append('@');
-					line.RemoveFromStart(1);
-				}
-				output..Append(line)..Append('\n');
-			}
-			return true;
-#else
 			bool nonParsedCommand = false;
 			int lastTextNewLineIdx = -1;
 			bool Comment(CXComment comment)
@@ -432,7 +375,6 @@ static class CBindings
 				return true;
 			}
 			return Comment(Clang.Cursor_GetParsedComment(cursor));
-#endif
 		}
 
 		static bool AddSpelling(CXCursor cursor, LibraryInfo library, String output, String lastDecls = null)
@@ -892,9 +834,6 @@ static class CBindings
 					{
 						if (i > 0) output.Append(", ");
 						StringView paramName = i < paramNamesCount ? paramNames[i] :
-#if CLANG_BACKUP_BINDINGS
-							"";
-#else
 						{
 							let childCount = Clang.Comment_GetNumChildren(comment);
 							StringView result = "";
@@ -909,7 +848,6 @@ static class CBindings
 							}
 							result
 						};
-#endif
 						var paramType = Clang.GetArgType(pointee, (.)i);
 						attrs:
 						{
