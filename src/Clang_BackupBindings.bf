@@ -18,14 +18,6 @@ struct CXUnsavedFile
 }
 
 [CRepr]
-public struct CXCursor
-{
-	public CXCursorKind kind;
-	c_int xdata;
-	void*[3] data;
-}
-
-[CRepr]
 public struct CXString
 {
 	readonly void* data;
@@ -148,9 +140,6 @@ static class Clang
 
 	[Import(libclang), LinkName("clang_getFieldDeclBitWidth")]
 	public static extern c_int GetFieldDeclBitWidth(CXCursor);
-
-	[Import(libclang), LinkName("clang_Cursor_getParsedComment")]
-	public static extern CXComment Cursor_GetParsedComment(CXCursor C);
 
 	// type
 	[Import(libclang), LinkName("clang_getCursorType")]
