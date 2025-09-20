@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {"Rune's C2Beef Binding Generator" = {Path = "."}, LibClang = {Path = "Clang"}}
+
+[Workspace]
+StartupProject = "Rune's C2Beef Binding Generator"

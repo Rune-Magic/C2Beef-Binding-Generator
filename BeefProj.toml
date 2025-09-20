@@ -1,0 +1,10 @@
+FileVersion = 1
+Dependencies = {corlib = "*", LibClang = "*"}
+
+[Project]
+Name = "Rune's C2Beef Binding Generator"
+StartupObject = "Rune.CBindingGenerator.Program"
+DefaultNamespace = "Rune.CBindingGenerator"
+
+[Configs.Debug.Win64]
+DebugCommandArguments = "__gen_clang"
