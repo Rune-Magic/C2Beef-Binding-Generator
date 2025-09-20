@@ -651,23 +651,20 @@ static class CBindings
 						default:
 							break findUnderlying;
 						}
-					let underlyingDecl = Clang.GetTypeDeclaration(underlyingType);
-					let srcRange = Clang.GetCursorExtent(cursor);
-					let underlyingRange = Clang.GetCursorExtent(underlyingDecl);
-					if (Clang.Cursor_IsAnonymous(underlyingDecl) == 0 && srcRange.begin_int_data <= underlyingRange.begin_int_data && srcRange.end_int_data >= underlyingRange.end_int_data)
-					{
-						bool newLineBuf = false;
-						output.Append(doubleIndent, GetAttributes(underlyingDecl), " public ");
-						Cursor(underlyingDecl, output, library, unit, "\t", .Empty, null, &newLineBuf);
-						output..TrimEnd()..Append('\n');
-						if (newLineBuf) output.Append('\n');
-					}
 					if (hasDoc) output.Append('\n');
 					*newLine = !hasDoc;
-				case .StructDecl, .UnionDecl:
+				case .StructDecl, .UnionDecl when Clang.Cursor_IsAnonymous(cursor) != 0:
+					bool newLineBuf = false;
 					output.Append(doubleIndent, "[", GetAttributes(cursor), "] public using ");
-					Cursor(cursor, output, library, unit, doubleIndent, .Empty, null, newLine, inlinedType: true);
+					Cursor(cursor, output, library, unit, doubleIndent, .Empty, null, &newLineBuf, inlinedType: true);
 					output..TrimEnd()..Append(";\n");
+					*newLine = false;
+				case .StructDecl, .UnionDecl, .EnumDecl when Clang.Cursor_IsAnonymous(cursor) == 0:
+					bool newLineBuf = false;
+					output.Append(doubleIndent, "[", GetAttributes(cursor), "] public ");
+					Cursor(cursor, output, library, unit, "\t", .Empty, null, &newLineBuf);
+					output..TrimEnd()..Append('\n');
+					*newLine = false;
 				default: return .Continue;
 				}
 				
