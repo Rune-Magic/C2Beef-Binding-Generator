@@ -1,10 +1,10 @@
 using System;
 using System.IO;
-using System.Threading; //TODO
 using System.Collections;
 using System.Diagnostics;
 
 using LibClang;
+using Rune.CBindingGenerator.GenerateClang;
 
 namespace Rune.CBindingGenerator;
 
@@ -48,7 +48,14 @@ static class Program
 #if DEBUG
 		if (args[0] == "__gen_clang")
 		{
-			Rune.CBindingGenerator.GenerateClang.GenerateClangBindings();
+			GenerateClangBindings();
+			Directory.SetCurrentDirectory("Clang");
+			if (system("git diff --quiet") != 0)
+			{
+				system("git add .");
+				system("git commit -m ""update bindings""");
+			}
+			Directory.SetCurrentDirectory("..");
 			return 0;
 		}
 #endif

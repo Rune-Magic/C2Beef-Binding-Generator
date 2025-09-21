@@ -1,0 +1,3 @@
+[submodule "Clang-Beef"]
+	path = Clang
+	url = https://github.com/Rune-Magic/Clang-Beef.git

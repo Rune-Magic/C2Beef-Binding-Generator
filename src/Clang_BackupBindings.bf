@@ -143,6 +143,9 @@ static class Clang
 	[Import(libclang), LinkName("clang_getFieldDeclBitWidth")]
 	public static extern c_int GetFieldDeclBitWidth(CXCursor);
 
+	[Import(libclang), LinkName("clang_getCursorReferenced")]
+	public static extern CXCursor GetCursorReferenced(CXCursor);
+
 	// type
 	[Import(libclang), LinkName("clang_getCursorType")]
 	public static extern CXType GetCursorType(CXCursor cursor);
@@ -173,6 +176,9 @@ static class Clang
 
 	[Import(libclang), LinkName("clang_Type_getSizeOf")]
 	public static extern c_longlong Type_GetSizeOf(CXType type);
+
+	[Import(libclang), LinkName("clang_getNonReferenceType")]
+	public static extern CXType GetNonReferenceType(CXType type);
 
 	// function
 	[Import(libclang), LinkName("clang_getCursorResultType")]

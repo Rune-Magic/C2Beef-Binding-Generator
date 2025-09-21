@@ -1,11 +1,14 @@
 FileVersion = 1
-Dependencies = {corlib = "*", LibClang = "*"}
+Dependencies = {corlib = "*", Clang-Beef = {Git = "https://github.com/Rune-Magic/Clang-Beef"}}
 
 [Project]
 Name = "Rune's C2Beef Binding Generator"
 Version = "1.0.1"
 StartupObject = "Rune.CBindingGenerator.Program"
 DefaultNamespace = "Rune.CBindingGenerator"
+
+[Configs.Debug.Win32]
+DebugCommandArguments = "__gen_clang"
 
 [Configs.Debug.Win64]
 DebugCommandArguments = "__gen_clang"

@@ -7,7 +7,7 @@ namespace Rune.CBindingGenerator.GenerateClang;
 
 static
 {
-	[CLink] static extern int32 system(char8*);
+	[CLink] public static extern int32 system(char8*);
 
 	public static void GenerateClangBindings()
 	{
