@@ -41,11 +41,11 @@ namespace LibClang;
 /** A single diagnostic, containing the diagnostic's severity,
  *  location, text, source ranges, and fix-it hints.
  */
-typealias CXDiagnostic = void*;
+class CXDiagnostic { private this() {} }
 
 /** A group of CXDiagnostics.
  */
-typealias CXDiagnosticSet = void*;
+class CXDiagnosticSet { private this() {} }
 
 extension Clang
 {
@@ -63,7 +63,6 @@ extension Clang
 	 *  via a call to @c clang_disposeDiagnostic().  
 	 */
 	[Import(Clang.dll), LinkName("clang_getDiagnosticInSet")] public static extern CXDiagnostic GetDiagnosticInSet(CXDiagnosticSet Diags, c_uint Index);
-
 }
 
 /** Describes the kind of error that occurred (if any) in a call to
@@ -123,7 +122,6 @@ extension Clang
 	/** Destroy a diagnostic.
 	 */
 	[Import(Clang.dll), LinkName("clang_disposeDiagnostic")] public static extern void DisposeDiagnostic(CXDiagnostic Diagnostic);
-
 }
 
 /** Options to control the display of diagnostics.

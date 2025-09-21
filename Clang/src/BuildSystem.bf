@@ -13,7 +13,6 @@ extension Clang
 	 *  @c -fbuild-session-timestamp= option. 
 	 */
 	[Import(Clang.dll), LinkName("clang_getBuildSessionTimestamp")] public static extern c_ulonglong GetBuildSessionTimestamp();
-
 }
 
 /** Object encapsulating information about overlaying virtual
@@ -64,7 +63,6 @@ extension Clang
 	/** Dispose a @c CXVirtualFileOverlay object. 
 	 */
 	[Import(Clang.dll), LinkName("clang_VirtualFileOverlay_dispose")] public static extern void VirtualFileOverlay_Dispose(CXVirtualFileOverlay);
-
 }
 
 /** Object encapsulating information about a module.modulemap file.

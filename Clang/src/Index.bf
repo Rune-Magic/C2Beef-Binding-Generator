@@ -16,7 +16,7 @@ static
 /** An "index" that consists of a set of translation units that would
  *  typically be linked together into an executable or library.
  */
-typealias CXIndex = void*;
+class CXIndex { private this() {} }
 
 /** An opaque type representing target information for a given translation
  *  unit.
@@ -194,7 +194,6 @@ extension Clang
 	 *  within that index have been destroyed.
 	 */
 	[Import(Clang.dll), LinkName("clang_disposeIndex")] public static extern void DisposeIndex(CXIndex index);
-
 }
 
 [CRepr, AllowDuplicates] enum CXChoice : c_int
@@ -299,6 +298,7 @@ extension Clang
 	[Bitfield(.Public, .BitsAt(pos: 2, bits: 1), "StorePreamblesInMemory")]
 
 	private uint32 __bitfield_12777;
+
 	/** The path to a directory, in which to store temporary PCH files. If null or
 	 *  empty, the default system temporary directory is used. These PCH files are
 	 *  deleted on clean exit but stay on disk if the program crashes or is killed.
@@ -537,7 +537,6 @@ extension Clang
 	 *  @returns Zero on success, otherwise returns an error code.
 	 */
 	[Import(Clang.dll), LinkName("clang_createTranslationUnit2")] public static extern CXErrorCode CreateTranslationUnit2(CXIndex CIdx, c_char* ast_filename, out CXTranslationUnit out_TU);
-
 }
 
 /** Flags that control the creation of translation units.
@@ -727,7 +726,6 @@ extension Clang
 	 *  for @c command_line_args including argv[0]. This is useful if the standard library paths are relative to the binary.
 	 */
 	[Import(Clang.dll), LinkName("clang_parseTranslationUnit2FullArgv")] public static extern CXErrorCode ParseTranslationUnit2FullArgv(CXIndex CIdx, c_char* source_filename, c_char** command_line_args, c_int num_command_line_args, CXUnsavedFile* unsaved_files, c_uint num_unsaved_files, c_uint options, CXTranslationUnit* out_TU);
-
 }
 
 /** Flags that control how translation units are saved.
@@ -752,7 +750,6 @@ extension Clang
 	 *  the most commonly-requested data.
 	 */
 	[Import(Clang.dll), LinkName("clang_defaultSaveOptions")] public static extern c_uint DefaultSaveOptions(CXTranslationUnit TU);
-
 }
 
 /** Describes the kind of error that occurred (if any) in a call to
@@ -818,7 +815,6 @@ extension Clang
 	/** Destroy the specified CXTranslationUnit object.
 	 */
 	[Import(Clang.dll), LinkName("clang_disposeTranslationUnit")] public static extern void DisposeTranslationUnit(CXTranslationUnit);
-
 }
 
 /** Flags that control the reparsing of translation units.
@@ -877,7 +873,6 @@ extension Clang
 	 *  invalid. In such cases, the only valid call for @c TU is @c clang_disposeTranslationUnit(TU). The error codes returned by this routine are described by the @c CXErrorCode enum. 
 	 */
 	[Import(Clang.dll), LinkName("clang_reparseTranslationUnit")] public static extern c_int ReparseTranslationUnit(CXTranslationUnit TU, c_uint num_unsaved_files, CXUnsavedFile* unsaved_files, c_uint options);
-
 }
 
 /** Categorizes how memory is being used by a translation unit.
@@ -910,7 +905,6 @@ extension Clang
 	 *  the name of the memory category.  This string should never be freed.
 	 */
 	[Import(Clang.dll), LinkName("clang_getTUResourceUsageName")] public static extern c_char* GetTUResourceUsageName(CXTUResourceUsageKind kind);
-
 }
 
 [CRepr] struct CXTUResourceUsageEntry
@@ -936,6 +930,7 @@ extension Clang
 	[Import(Clang.dll), LinkName("clang_getCXTUResourceUsage")] public static extern CXTUResourceUsage GetCXTUResourceUsage(CXTranslationUnit TU);
 
 	[Import(Clang.dll), LinkName("clang_disposeCXTUResourceUsage")] public static extern void DisposeCXTUResourceUsage(CXTUResourceUsage usage);
+
 	/** Get target information for this translation unit.
 	 *  The CXTargetInfo object cannot outlive the CXTranslationUnit object.
 	 */
@@ -954,7 +949,6 @@ extension Clang
 	 *  Returns -1 in case of error.
 	 */
 	[Import(Clang.dll), LinkName("clang_TargetInfo_getPointerWidth")] public static extern c_int TargetInfo_GetPointerWidth(CXTargetInfo Info);
-
 }
 
 /** Describes the kind of entity that a cursor refers to.
@@ -1525,6 +1519,7 @@ extension Clang
 	SizeOfPackExpr = 143,
 
 	LambdaExpr = 144,
+
 	/** Objective-c Boolean Literal.
 	 */
 	ObjCBoolLiteralExpr = 145,
@@ -2513,7 +2508,6 @@ extension Clang
 	 *  unexposed piece of the AST (e.g., CXCursor_UnexposedStmt).
 	 */
 	[Import(Clang.dll), LinkName("clang_isUnexposed")] public static extern c_uint IsUnexposed(CXCursorKind);
-
 }
 
 /** Describe the linkage of the entity referred to by a cursor.
@@ -2550,7 +2544,6 @@ extension Clang
 	/** Determine the linkage of the entity referred to by a given cursor.
 	 */
 	[Import(Clang.dll), LinkName("clang_getCursorLinkage")] public static extern CXLinkageKind GetCursorLinkage(CXCursor cursor);
-
 }
 
 [CRepr, AllowDuplicates] enum CXVisibilityKind : c_int
@@ -2595,7 +2588,6 @@ extension Clang
 	 *  @returns The availability of the cursor.
 	 */
 	[Import(Clang.dll), LinkName("clang_getCursorAvailability")] public static extern CXAvailabilityKind GetCursorAvailability(CXCursor cursor);
-
 }
 
 /** Describes the availability of a given entity on a particular platform, e.g.,
@@ -2690,7 +2682,6 @@ extension Clang
 	 *  external storage returns 0. Otherwise returns -1.
 	 */
 	[Import(Clang.dll), LinkName("clang_Cursor_hasVarDeclExternalStorage")] public static extern c_int Cursor_HasVarDeclExternalStorage(CXCursor cursor);
-
 }
 
 /** Describe the "language" of the entity referred to by a cursor.
@@ -2708,7 +2699,6 @@ extension Clang
 	/** Determine the "language" of the entity referred to by a given cursor.
 	 */
 	[Import(Clang.dll), LinkName("clang_getCursorLanguage")] public static extern CXLanguageKind GetCursorLanguage(CXCursor cursor);
-
 }
 
 /** Describe the "thread-local storage (TLS) kind" of the declaration
@@ -2731,7 +2721,6 @@ extension Clang
 	/** Returns the translation unit that a cursor originated from.
 	 */
 	[Import(Clang.dll), LinkName("clang_Cursor_getTranslationUnit")] public static extern CXTranslationUnit Cursor_GetTranslationUnit(CXCursor);
-
 }
 
 /** A fast container representing a set of CXCursors.
@@ -2892,7 +2881,6 @@ extension Clang
 	 *  entity was actually used).
 	 */
 	[Import(Clang.dll), LinkName("clang_getCursorExtent")] public static extern CXSourceRange GetCursorExtent(CXCursor);
-
 }
 
 /** Describes the kind of type
@@ -3671,7 +3659,6 @@ extension Clang
 	 *  invalid cursor is returned.
 	 */
 	[Import(Clang.dll), LinkName("clang_Cursor_getArgument")] public static extern CXCursor Cursor_GetArgument(CXCursor C, c_uint i);
-
 }
 
 /** Describes the kind of a template argument.
@@ -4011,7 +3998,6 @@ extension Clang
 	 *  @returns non-zero if transparent and zero otherwise.
 	 */
 	[Import(Clang.dll), LinkName("clang_Type_isTransparentTagTypedef")] public static extern c_uint Type_IsTransparentTagTypedef(CXType T);
-
 }
 
 [CRepr, AllowDuplicates] enum CXTypeNullabilityKind : c_int
@@ -4049,7 +4035,6 @@ extension Clang
 	/** Retrieve the nullability kind of a pointer type.
 	 */
 	[Import(Clang.dll), LinkName("clang_Type_getNullability")] public static extern CXTypeNullabilityKind Type_GetNullability(CXType T);
-
 }
 
 /** List the possible error codes for @c clang_Type_getSizeOf,  @c clang_Type_getAlignOf,  @c clang_Type_getOffsetOf,  @c clang_Cursor_getOffsetOf, and  @c clang_getOffsetOfBase. 
@@ -4161,7 +4146,6 @@ extension Clang
 	 *  declaration.
 	 */
 	[Import(Clang.dll), LinkName("clang_Cursor_isInlineNamespace")] public static extern c_uint Cursor_IsInlineNamespace(CXCursor C);
-
 }
 
 [CRepr, AllowDuplicates] enum CXRefQualifierKind : c_int
@@ -4211,7 +4195,6 @@ extension Clang
 	 *  CXTypeLayoutError for error codes.
 	 */
 	[Import(Clang.dll), LinkName("clang_getOffsetOfBase")] public static extern c_longlong GetOffsetOfBase(CXCursor Parent, CXCursor Base);
-
 }
 
 /** Represents the C++ access control level to a base class for a
@@ -4233,7 +4216,6 @@ extension Clang
 	 *  specifier or access specifier, the specifier itself is returned.
 	 */
 	[Import(Clang.dll), LinkName("clang_getCXXAccessSpecifier")] public static extern CX_CXXAccessSpecifier GetCXXAccessSpecifier(CXCursor);
-
 }
 
 /** Represents the storage classes as declared in the source. CX_SC_Invalid
@@ -4342,7 +4324,6 @@ extension Clang
 	 *  
 	 */
 	[Import(Clang.dll), LinkName("clang_getIBOutletCollectionType")] public static extern CXType GetIBOutletCollectionType(CXCursor);
-
 }
 
 /** Describes how the traversal of the children of a particular
@@ -4399,11 +4380,9 @@ extension Clang
 	 *  prematurely by the visitor returning @c CXChildVisit_Break.  
 	 */
 	[Import(Clang.dll), LinkName("clang_visitChildren")] public static extern c_uint VisitChildren(CXCursor parent, CXCursorVisitor visitor, CXClientData client_data);
-
 }
 
 struct _CXChildVisitResult;
-
 typealias CXCursorVisitorBlock = _CXChildVisitResult*;
 
 extension Clang
@@ -4464,13 +4443,12 @@ extension Clang
 	 *  @param options Reserved.
 	 */
 	[Import(Clang.dll), LinkName("clang_Cursor_getSpellingNameRange")] public static extern CXSourceRange Cursor_GetSpellingNameRange(CXCursor, c_uint pieceIndex, c_uint options);
-
 }
 
 /** Opaque pointer representing a policy that controls pretty printing
  *  for @c clang_getCursorPrettyPrinted.  
  */
-typealias CXPrintingPolicy = void*;
+class CXPrintingPolicy { private this() {} }
 
 /** Properties for the printing policy.
  *  See @c clang::PrintingPolicy for more information. 
@@ -4646,7 +4624,6 @@ extension Clang
 	 *  reference, or C++ method call, returns the CXType of the receiver.
 	 */
 	[Import(Clang.dll), LinkName("clang_Cursor_getReceiverType")] public static extern CXType Cursor_GetReceiverType(CXCursor C);
-
 }
 
 /** Property attributes for a @c CXCursor_ObjCPropertyDecl.  
@@ -4688,7 +4665,6 @@ extension Clang
 	 *  name of the method that implements the setter, if any.
 	 */
 	[Import(Clang.dll), LinkName("clang_Cursor_getObjCPropertySetterName")] public static extern CXString Cursor_GetObjCPropertySetterName(CXCursor C);
-
 }
 
 /** 'Qualifiers' written next to the return and parameter types in
@@ -4849,7 +4825,6 @@ extension Clang
 	 *  assembly block.
 	 */
 	[Import(Clang.dll), LinkName("clang_Cursor_isGCCAssemblyVolatile")] public static extern c_uint Cursor_IsGCCAssemblyVolatile(CXCursor Cursor);
-
 }
 
 /** 
@@ -4857,7 +4832,7 @@ extension Clang
  *  The functions in this group provide access to information about modules.
  *  @{ 
  */
-typealias CXModule = void*;
+class CXModule { private this() {} }
 
 extension Clang
 {
@@ -5141,7 +5116,6 @@ extension Clang
 	 *  name, or if the PieceIndex is out-of-range, a null-cursor will be returned.
 	 */
 	[Import(Clang.dll), LinkName("clang_getCursorReferenceNameRange")] public static extern CXSourceRange GetCursorReferenceNameRange(CXCursor C, c_uint NameFlags, c_uint PieceIndex);
-
 }
 
 [CRepr, AllowDuplicates] enum CXNameRefFlags : c_int
@@ -5310,7 +5284,7 @@ extension Clang
  *  the template, or whether it is a "placeholder" that the user should replace
  *  with actual code,of a specific kind. See @c CXCompletionChunkKind for a description of the different kinds of chunks.
  */
-typealias CXCompletionString = void*;
+class CXCompletionString { private this() {} }
 
 /** A single result of code completion.
  */
@@ -5602,7 +5576,6 @@ extension Clang
 	 *  definition cursors, or NULL for other kinds of cursors.
 	 */
 	[Import(Clang.dll), LinkName("clang_getCursorCompletionString")] public static extern CXCompletionString GetCursorCompletionString(CXCursor cursor);
-
 }
 
 /** Contains the results of code-completion.
@@ -5680,7 +5653,6 @@ extension Clang
 	 *  before the completion at completion_index can be applied
 	 */
 	[Import(Clang.dll), LinkName("clang_getCompletionFixIt")] public static extern CXString GetCompletionFixIt(CXCodeCompleteResults* results, c_uint completion_index, c_uint fixit_index, CXSourceRange* replacement_range);
-
 }
 
 /** Flags that can be passed to @c clang_codeCompleteAt() to modify its behavior.
@@ -5996,7 +5968,6 @@ extension Clang
 	 *  value enables crash recovery, while 0 disables it.
 	 */
 	[Import(Clang.dll), LinkName("clang_toggleCrashRecovery")] public static extern void ToggleCrashRecovery(c_uint isEnabled);
-
 }
 
 /** Visitor invoked for each file in a translation unit
@@ -6020,7 +5991,6 @@ extension Clang
 	 *  is inspecting the inclusions in the PCH file itself).
 	 */
 	[Import(Clang.dll), LinkName("clang_getInclusions")] public static extern void GetInclusions(CXTranslationUnit tu, CXInclusionVisitor visitor, CXClientData client_data);
-
 }
 
 [CRepr, AllowDuplicates] enum CXEvalResultKind : c_int
@@ -6036,7 +6006,7 @@ extension Clang
 
 /** Evaluation result of a cursor
  */
-typealias CXEvalResult = void*;
+class CXEvalResult { private this() {} }
 
 extension Clang
 {
@@ -6087,7 +6057,6 @@ extension Clang
 	/** Disposes the created Eval memory.
 	 */
 	[Import(Clang.dll), LinkName("clang_EvalResult_dispose")] public static extern void EvalResult_Dispose(CXEvalResult E);
-
 }
 
 /** 
@@ -6152,11 +6121,9 @@ extension Clang
 	 *  @returns one of the CXResult enumerators.
 	 */
 	[Import(Clang.dll), LinkName("clang_findIncludesInFile")] public static extern CXResult FindIncludesInFile(CXTranslationUnit TU, CXFile file, CXCursorAndRangeVisitor visitor);
-
 }
 
 struct _CXCursorAndRangeVisitorBlock;
-
 typealias CXCursorAndRangeVisitorBlock = _CXCursorAndRangeVisitorBlock*;
 
 extension Clang
@@ -6167,21 +6134,21 @@ extension Clang
 
 /** The client's data object that is associated with a CXFile.
  */
-typealias CXIdxClientFile = void*;
+class CXIdxClientFile { private this() {} }
 
 /** The client's data object that is associated with a semantic entity.
  */
-typealias CXIdxClientEntity = void*;
+class CXIdxClientEntity { private this() {} }
 
 /** The client's data object that is associated with a semantic container
  *  of entities.
  */
-typealias CXIdxClientContainer = void*;
+class CXIdxClientContainer { private this() {} }
 
 /** The client's data object that is associated with an AST file (PCH
  *  or module).
  */
-typealias CXIdxClientASTFile = void*;
+class CXIdxClientASTFile { private this() {} }
 
 /** Source location passed to index callbacks.
  */
@@ -6221,6 +6188,7 @@ typealias CXIdxClientASTFile = void*;
 
 	public c_int isImport;
 	public c_int isAngled;
+
 	/** Non-zero if the directive was automatically turned into a module
 	 *  import.
 	 */
@@ -6360,6 +6328,7 @@ typealias CXIdxClientASTFile = void*;
 	public CXCursor cursor;
 	public CXIdxLoc loc;
 	public CXIdxContainerInfo* semanticContainer;
+
 	/** Generally same as #semanticContainer but can be different in
 	 *  cases like out-of-line C++ member functions.
 	 */
@@ -6369,6 +6338,7 @@ typealias CXIdxClientASTFile = void*;
 	public c_int isDefinition;
 	public c_int isContainer;
 	public CXIdxContainerInfo* declAsContainer;
+
 	/** Whether the declaration exists in code or was created implicitly
 	 *  by the compiler, e.g. implicit Objective-C methods for properties.
 	 */
@@ -6482,11 +6452,13 @@ typealias CXIdxClientASTFile = void*;
 [CRepr] struct CXIdxEntityRefInfo
 {
 	public CXIdxEntityRefKind kind;
+
 	/** Reference cursor.
 	 */
 	public CXCursor cursor;
 
 	public CXIdxLoc loc;
+
 	/** The entity that gets referenced.
 	 */
 	public CXIdxEntityInfo* referencedEntity;
@@ -6527,6 +6499,7 @@ typealias CXIdxClientASTFile = void*;
 	public function void(CXClientData, CXDiagnosticSet, void*) diagnostic;
 
 	public function CXIdxClientFile(CXClientData, CXFile, void*) enteredMainFile;
+
 	/** Called when a file gets 
 	 *  #
 	 *  included/
@@ -6548,6 +6521,7 @@ typealias CXIdxClientASTFile = void*;
 	public function CXIdxClientContainer(CXClientData, void*) startedTranslationUnit;
 
 	public function void(CXClientData, CXIdxDeclInfo*) indexDeclaration;
+
 	/** Called to index a reference of an entity.
 	 */
 	public function void(CXClientData, CXIdxEntityRefInfo*) indexEntityReference;
@@ -6564,6 +6538,7 @@ extension Clang
 	[Import(Clang.dll), LinkName("clang_index_getObjCPropertyDeclInfo")] public static extern CXIdxObjCPropertyDeclInfo* Index_GetObjCPropertyDeclInfo(CXIdxDeclInfo*);
 	[Import(Clang.dll), LinkName("clang_index_getIBOutletCollectionAttrInfo")] public static extern CXIdxIBOutletCollectionAttrInfo* Index_GetIBOutletCollectionAttrInfo(CXIdxAttrInfo*);
 	[Import(Clang.dll), LinkName("clang_index_getCXXClassDeclInfo")] public static extern CXIdxCXXClassDeclInfo* Index_GetCXXClassDeclInfo(CXIdxDeclInfo*);
+
 	/** For retrieving a custom CXIdxClientContainer attached to a
 	 *  container.
 	 */
@@ -6581,13 +6556,12 @@ extension Clang
 	/** For setting a custom CXIdxClientEntity attached to an entity.
 	 */
 	[Import(Clang.dll), LinkName("clang_index_setClientEntity")] public static extern void Index_SetClientEntity(CXIdxEntityInfo*, CXIdxClientEntity);
-
 }
 
 /** An indexing action/session, to be applied to one or multiple
  *  translation units.
  */
-typealias CXIndexAction = void*;
+class CXIndexAction { private this() {} }
 
 extension Clang
 {
@@ -6603,7 +6577,6 @@ extension Clang
 	 *  created within that index action have been destroyed.
 	 */
 	[Import(Clang.dll), LinkName("clang_IndexAction_dispose")] public static extern void IndexAction_Dispose(CXIndexAction);
-
 }
 
 [CRepr, AllowDuplicates] enum CXIndexOptFlags : c_int
@@ -6695,7 +6668,6 @@ extension Clang
 	/** Retrieve the CXSourceLocation represented by the given CXIdxLoc.
 	 */
 	[Import(Clang.dll), LinkName("clang_indexLoc_getCXSourceLocation")] public static extern CXSourceLocation IndexLoc_GetCXSourceLocation(CXIdxLoc loc);
-
 }
 
 /** Visitor invoked for each field found by a traversal.
@@ -6761,7 +6733,6 @@ extension Clang
 	 *  prematurely by the visitor returning @c CXFieldVisit_Break.  
 	 */
 	[Import(Clang.dll), LinkName("clang_visitCXXMethods")] public static extern c_uint VisitCXXMethods(CXType T, CXFieldVisitor visitor, CXClientData client_data);
-
 }
 
 /** Describes the kind of binary operators.
@@ -6920,7 +6891,6 @@ extension Clang
 	 *  If this cursor is not a binary operator then returns Invalid.
 	 */
 	[Import(Clang.dll), LinkName("clang_getCursorBinaryOperatorKind")] public static extern CXBinaryOperatorKind GetCursorBinaryOperatorKind(CXCursor cursor);
-
 }
 
 /** Describes the kind of unary operators.
@@ -6999,12 +6969,11 @@ extension Clang
 	 *  If this cursor is not a unary operator then returns Invalid.
 	 */
 	[Import(Clang.dll), LinkName("clang_getCursorUnaryOperatorKind")] public static extern CXUnaryOperatorKind GetCursorUnaryOperatorKind(CXCursor cursor);
-
 }
 
 /** @} 
  */
-typealias CXRemapping = void*;
+class CXRemapping { private this() {} }
 
 extension Clang
 {

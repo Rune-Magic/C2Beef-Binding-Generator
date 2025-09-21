@@ -22,7 +22,6 @@ extension Clang
 	 *  @c CXComment_FullComment AST node. 
 	 */
 	[Import(Clang.dll), LinkName("clang_Cursor_getParsedComment")] public static extern CXComment Cursor_GetParsedComment(CXCursor C);
-
 }
 
 /** Describes the type of the comment AST node (@c CXComment). A comment node can be considered block content (e. g., paragraph), inline content
@@ -490,7 +489,6 @@ extension Clang
 	 *  @returns string containing an XML document.
 	 */
 	[Import(Clang.dll), LinkName("clang_FullComment_getAsXML")] public static extern CXString FullComment_GetAsXML(CXComment Comment);
-
 }
 
 /** CXAPISet is an opaque type that represents a data structure containing all

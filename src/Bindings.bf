@@ -18,11 +18,11 @@ static class CBindings
 	{
 		public Flags flags = .None;
 
-		/// the suffix for the opaque types used in handles (will be _T for vulkan)
-		public StringView handleOpaqueTypeSuffix;
+		/// if true is returned then the cursor will be excluded from the bindings
+		public delegate bool(CXCursor cursor, StringView spelling) isBlackListed = null;
 
-		/// all cursors with this spelling will be excluded
-		public Span<StringView> blackList = default;
+		/// if true then the typedef will be a handle and the underlying opaque struct will be excluded
+		public delegate bool(CXType type, StringView spelling, StringView typedefSpelling) isHandleUnderlyingOpaque = null;
 
 		/// custom attributes applied to extern functions and function pointers
 		/// e.g. CallingConvention(.StdCall)
@@ -75,7 +75,7 @@ static class CBindings
 			""", " ", outputNamespace, ";\n\n");
 
 		bool newLine = false;
-		String blockName = scope .();
+		String blockName = scope .(8);
 		Clang.VisitChildren(Clang.GetTranslationUnitCursor(unit), (cursor, parent, data) =>
 		{
 			(String output, bool* newLine, char8* header, CXTranslationUnit unit, LibraryInfo library, String blockName, String lastDecls) = *(.)data;
@@ -84,11 +84,11 @@ static class CBindings
 			let filename = GetString!(Clang.GetFileName(file));
 			if (filename == null || !String.Equals(filename, header)) return .Continue;
 
-			if (!library.blackList.IsEmpty)
+			if (library.isBlackListed != null)
 			{
 				StringView spelling = .(GetString!(Clang.GetCursorSpelling(cursor)));
-				for (let blackListed in library.blackList)
-					if (spelling == blackListed) return .Continue;
+				if (library.isBlackListed(cursor, spelling))
+					return .Continue;
 			}
 
 			Cursor(cursor, output, library, unit, "", blockName, lastDecls, newLine, includeAttrs: true, noEnsureBlock: false);
@@ -102,7 +102,7 @@ static class CBindings
 		File.WriteAllText(outputFile, output);
 	}
 
-	protected static mixin GetString(CXString str)
+	public static mixin GetString(CXString str)
 	{
 		defer:mixin Clang.DisposeString(str);
 		Clang.GetCString(str)
@@ -112,7 +112,9 @@ static class CBindings
 	{
 		strBuffer = null;
 		if (spelling.EndsWith('_')) spelling.RemoveFromEnd(1);
-		library.modifySourceName?.Invoke(cursor, ref spelling, out strBuffer);
+
+		if (library.modifySourceName != null)
+			library.modifySourceName(cursor, ref spelling, out strBuffer);
 	}
 
 	protected static bool IsOutParam(CXType paramType, LibraryInfo library, StringView paramSpelling, StringView lastParamSpelling, StringView docs)
@@ -236,8 +238,6 @@ static class CBindings
 			let str = Clang.GetTypeSpelling(type);
 			defer Clang.DisposeString(str);
 			StringView spelling = .(Clang.GetCString(str));
-			ModifySourceName(typeDecl, ref spelling, library, let toDelete);
-			defer delete toDelete;
 			while (true)
 			{
 				mixin Prefix(StringView prefix)
@@ -255,6 +255,8 @@ static class CBindings
 				Prefix!("union ");
 				break;
 			}
+			ModifySourceName(typeDecl, ref spelling, library, let toDelete);
+			defer delete toDelete;
 
 			switch (spelling)
 			{
@@ -356,6 +358,7 @@ static class CBindings
 					switch (_)
 					{
 					case .FullComment:
+						if (newLine) output.Append('\n');
 						output.Append(indent, "/** ");
 						defer:: output.Append(indent, " */\n");
 					case .VerbatimBlockCommand:
@@ -411,7 +414,11 @@ static class CBindings
 				doubleIndent = doubleIndentStr;
 			}
 			if (noEnsureBlock || blockName == block) return;
-			if (!blockName.IsEmpty) output.Append("}\n\n");
+			if (!blockName.IsEmpty)
+			{
+				if (output.EndsWith("\n\n")) output.RemoveFromEnd(1);
+				output.Append("}\n\n");
+			}
 			else if (*newLine) output.Append('\n');
 			do
 			{
@@ -537,24 +544,14 @@ static class CBindings
 				return .Continue;
 			}, &count);
 
-			if (count == 0)
+			if (count == 0) do
 			{
 				StringView spelling = .(GetString!(Clang.GetCursorSpelling(cursor)));
 				ModifySourceName(cursor, ref spelling, library, let toDelete);
 				defer delete toDelete;
 
-				{
-					if (spelling.EndsWith(library.handleOpaqueTypeSuffix)) return;
-
-					var extent = Clang.GetCursorExtent(cursor);
-					extent.[Friend]end_int_data++;
-					CXToken* tokens = null;
-					uint32 tokenCount = 0;
-					Clang.Tokenize(unit, extent, &tokens, &tokenCount);
-					defer Clang.DisposeTokens(unit, tokens, tokenCount);
-					if (tokenCount == 3 && String.Equals(";", GetString!(Clang.GetTokenSpelling(unit, tokens[2]))))
-						return;
-				}
+				if (library.isHandleUnderlyingOpaque?.Invoke(Clang.GetCursorType(cursor), spelling, null) == true)
+					return;
 
 				let block = library.getBlock?.Invoke(cursor, spelling);
 				EnsureBlock(block.HasValue ? block.Value : .());
@@ -563,7 +560,7 @@ static class CBindings
 				if (block.HasValue) output.Append("public ");
 				output.Append("struct ", spelling, ";\n");
 				if (hasDoc) output.Append('\n');
-				*newLine = !hasDoc;
+				*newLine = false;
 				return;
 			}
 
@@ -573,7 +570,7 @@ static class CBindings
 			EnsureBlock(block.HasValue ? block.Value : .());
 			let hasDoc = DocString(output, cursor, *newLine, indent);
 			if (!hasDoc && *newLine) output.Append('\n');
-			if (!anonymous) output.Append(indent);
+			if (!inlinedType) output.Append(indent);
 			if (includeAttrs) output.Append("[", GetAttributes(cursor), "] ");
 			output.Append(block.HasValue ? "public struct " : "struct "); AddSpelling(cursor, library, output, lastDecls); output.Append("\n", indent, "{\n");
 			bool putNewLine = false;
@@ -662,7 +659,7 @@ static class CBindings
 				case .StructDecl, .UnionDecl, .EnumDecl when Clang.Cursor_IsAnonymous(cursor) == 0:
 					bool newLineBuf = false;
 					output.Append(doubleIndent, "[", GetAttributes(cursor), "] public ");
-					Cursor(cursor, output, library, unit, "\t", .Empty, null, &newLineBuf);
+					Cursor(cursor, output, library, unit, "\t", .Empty, null, &newLineBuf, inlinedType: true);
 					output..TrimEnd()..Append('\n');
 					*newLine = false;
 				default: return .Continue;
@@ -876,7 +873,9 @@ static class CBindings
 				StringView typeStr = Type(type, ..scope .(), library, true);
 				if (typeStr == spelling) break;
 				hasDoc = DocString(output, cursor, *newLine, indent);
-				if (typeStr.EndsWith('*') && StringView(typeStr)..RemoveFromEnd(1).EndsWith(library.handleOpaqueTypeSuffix))
+				if (type.kind == .Pointer && library.isHandleUnderlyingOpaque?.Invoke(
+						Clang.GetPointeeType(type), .(typeStr)..RemoveFromEnd(1), spelling
+					) == true)
 				{
 					output.Append(indent, "class ", spelling, " { private this() {} }\n");
 					break;

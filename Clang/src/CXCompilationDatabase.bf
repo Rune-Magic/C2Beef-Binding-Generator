@@ -12,7 +12,7 @@ namespace LibClang;
  *  directory or the command line used for the compiler invocation.
  *  Must be freed by @c clang_CompilationDatabase_dispose  
  */
-typealias CXCompilationDatabase = void*;
+class CXCompilationDatabase { private this() {} }
 
 /** Contains the results of a search in the compilation database
  *  When searching for the compile command for a file, the compilation db can
@@ -21,11 +21,11 @@ typealias CXCompilationDatabase = void*;
  *  commands is wrapped in this opaque data structure. It must be freed by
  *  @c clang_CompileCommands_dispose.  
  */
-typealias CXCompileCommands = void*;
+class CXCompileCommands { private this() {} }
 
 /** Represents the command line invocation to compile a specific file.
  */
-typealias CXCompileCommand = void*;
+class CXCompileCommand { private this() {} }
 
 /** Error codes for Compilation Database
  */

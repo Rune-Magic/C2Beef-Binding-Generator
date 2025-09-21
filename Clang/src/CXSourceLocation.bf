@@ -199,7 +199,6 @@ extension Clang
 	 *  source range.
 	 */
 	[Import(Clang.dll), LinkName("clang_getRangeEnd")] public static extern CXSourceLocation GetRangeEnd(CXSourceRange range);
-
 }
 
 /** Identifies an array of ranges.

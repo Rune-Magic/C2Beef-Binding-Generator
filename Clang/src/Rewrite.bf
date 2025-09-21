@@ -7,7 +7,7 @@ using System.Interop;
 
 namespace LibClang;
 
-typealias CXRewriter = void*;
+class CXRewriter { private this() {} }
 
 extension Clang
 {

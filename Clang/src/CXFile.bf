@@ -9,7 +9,7 @@ namespace LibClang;
 
 /** A particular source file that is part of a translation unit.
  */
-typealias CXFile = void*;
+class CXFile { private this() {} }
 
 extension Clang
 {
@@ -20,7 +20,6 @@ extension Clang
 	/** Retrieve the last modification time of the given file.
 	 */
 	[Import(Clang.dll), LinkName("clang_getFileTime")] public static extern time_t GetFileTime(CXFile SFile);
-
 }
 
 /** Uniquely identifies a CXFile, that refers to the same underlying file,

@@ -32,7 +32,11 @@ static
 		CBindings.LibraryInfo libInfo = scope .()
 		{
 			customLinkage = "Import(Clang.dll)",
-			handleOpaqueTypeSuffix = "Impl",
+
+			isHandleUnderlyingOpaque = scope (type, spelling, typedefSpelling) =>
+			{
+				return (type.kind == .Void && typedefSpelling != "CXClientData") || spelling.EndsWith("Impl");
+			},
 
 			getBlock = scope (cursor, spelling) =>
 			{
@@ -82,7 +86,7 @@ static
 		{
 			if (system(scope $"curl -o Clang/clang-c/{file}.h https://raw.githubusercontent.com/llvm/llvm-project/refs/heads/main/clang/include/clang-c/{file}.h") != 0)
 				Runtime.FatalError(scope $"Failed to download clang-c/{file}");
-			if (file == "ExternC") continue;
+			if (file == "ExternC" || file == "Platform") continue;
 			CBindings.Generate(scope $"Clang/clang-c/{file}.h", scope $"Clang/src/{file}.bf", "LibClang", libInfo);
 			Console.WriteLine(scope $"Generated Clang/src/{file}.bf");
 		}

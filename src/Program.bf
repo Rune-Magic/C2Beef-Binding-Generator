@@ -4,6 +4,8 @@ using System.Threading; //TODO
 using System.Collections;
 using System.Diagnostics;
 
+using LibClang;
+
 namespace Rune.CBindingGenerator;
 
 static class Program
@@ -123,7 +125,8 @@ static class Program
 		Assert!(!name.IsEmpty, "Error: No output namespace specified (--name, -n)");
 
 		CBindings.args = clangArgs;
-		CBindings.Generate(inputFile, outputFile, name, scope .() { flags=flags, blackList=blackList,
+		CBindings.Generate(inputFile, outputFile, name, scope .() { flags=flags,
+			isBlackListed = blackList.IsEmpty ? null : scope (cursor, spelling) => blackList.Contains(spelling),
 			customFunctionAttributes=functionAttrs, customLinkage=customLinkage }, params usingDependencies);
 
 		return 0;
