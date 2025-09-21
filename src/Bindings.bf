@@ -209,8 +209,8 @@ static class CBindings
 			let elementType = Clang.GetArrayElementType(type);
 			Type(elementType, output, library, true);
 			output.Append('*');
-		case .LValueReference: output.Append("ref "); Type(Clang.GetPointeeType(type), output, library, true);
-		case .RValueReference: output.Append("in "); Type(Clang.GetPointeeType(type), output, library, true);
+		case .LValueReference: output.Append("ref "); Type(Clang.GetNonReferenceType(type), output, library, true);
+		case .RValueReference: output.Append("in "); Type(Clang.GetNonReferenceType(type), output, library, true);
 		case .Record, .Enum:
 			StringView name = .(GetString!(Clang.GetTypeSpelling(type)));
 			ModifySourceName(typeDecl, ref name, library, let toDelete);
@@ -710,24 +710,40 @@ static class CBindings
 				if (anonymous) output.Append("public static c_int ");
 				Compiler.Identifier.GetSourceName(spelling, output);
 				output.Append(" = ");
-				if (anonymous)
-					output.Append(';');
-				else do
+				constExpr: do
 				{
-					defer output.Append(',');
-					CXToken* tokens = null;
-					uint32 tokenCount = 0;
-					Clang.Tokenize(unit, Clang.GetCursorExtent(cursor), &tokens, &tokenCount);
-					defer Clang.DisposeTokens(unit, tokens, tokenCount);
-					if (tokenCount < 3)
+					Span<CXToken> tokens;
 					{
+						CXToken* tokenPtr = null;
+						uint32 tokenCount = 0;
+						Clang.Tokenize(unit, Clang.GetCursorExtent(cursor), &tokenPtr, &tokenCount);
+						defer:constExpr Clang.DisposeTokens(unit, tokenPtr, tokenCount);
+						if (tokenCount < 3)
+						{
+							Clang.GetEnumConstantDeclValue(cursor).ToString(output);
+							break;
+						}
+						tokens = .(tokenPtr, tokenCount)..RemoveFromStart(2);
+					}
+					CXCursor[] cursors = scope .[tokens.Length];
+					Clang.AnnotateTokens(unit, tokens.Ptr, (.)tokens.Length, cursors.Ptr);
+					for (let i < tokens.Length)
+					{
+						if (Clang.GetTokenKind(tokens[i]) != .Identifier)
+							continue;
+						let parentRange = Clang.GetCursorExtent(parent);
+						let definitionRange = Clang.GetCursorExtent(Clang.GetCursorReferenced(cursors[i]));
+						if (parentRange.begin_int_data < definitionRange.end_int_data && parentRange.end_int_data > definitionRange.end_int_data)
+							continue;
 						Clang.GetEnumConstantDeclValue(cursor).ToString(output);
+						output.Append(" /* ");
+						defer:constExpr output.Append(" */");
 						break;
 					}
-					for (int tokenIdx = 2; tokenIdx < tokenCount; tokenIdx++)
+					for (let token in tokens)
 					{
-						StringView spell = .(GetString!(Clang.GetTokenSpelling(unit, tokens[tokenIdx])));
-						switch (Clang.GetTokenKind(tokens[tokenIdx]))
+						StringView spell = .(GetString!(Clang.GetTokenSpelling(unit, token)));
+						switch (Clang.GetTokenKind(token))
 						{
 						case .Punctuation:
 							switch (spell[0])
@@ -747,7 +763,7 @@ static class CBindings
 						}
 					}
 				}
-				output.Append('\n');
+				output..Append(anonymous ? ';' : ',')..Append('\n');
 				if (hasDoc) output.Append('\n');
 				*newLine = !hasDoc;
 				return .Continue;

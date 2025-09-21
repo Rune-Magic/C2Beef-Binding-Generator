@@ -211,19 +211,6 @@ static class Clang
 	[Import(libclang), LinkName("clang_getFileName")]
 	public static extern CXString GetFileName(CXFile file);
 
-	// Method
-	[Import(libclang), LinkName("clang_CXXMethod_isStatic")]
-	public static extern c_uint CXXMethod_isStatic(CXCursor cursor);
-	
-	[Import(libclang), LinkName("clang_CXXMethod_isPureVirtual")]
-	public static extern c_uint CXXMethod_isPureVirtual(CXCursor cursor);
-	
-	[Import(libclang), LinkName("clang_CXXMethod_isVirtual")]
-	public static extern c_uint CXXMethod_isVirtual(CXCursor cursor);
-
-	[Import(libclang), LinkName("clang_CXXMethod_isConst")]
-	public static extern c_uint CXXMethod_isConst(CXCursor cursor);
-
 	// struct
 	[Import(libclang), LinkName("clang_CXXRecord_isAbstract")]
 	public static extern c_uint CXXRecord_isAbstract(CXCursor cursor);
@@ -273,6 +260,9 @@ static class Clang
 	[Import(libclang), LinkName("clang_disposeTokens")]
 	public static extern void DisposeTokens(CXTranslationUnit TU, CXToken* Tokens,
 											c_uint NumTokens);
+
+	[Import(libclang), LinkName("clang_annotateTokens")]
+	public static extern void AnnotateTokens(CXTranslationUnit TU, CXToken* Tokens, c_uint NumTokens, CXCursor* Cursors);
 }
 
 /////////////////////////////////////////////////////////////////////////////////
