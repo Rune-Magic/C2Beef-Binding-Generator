@@ -3,6 +3,7 @@ Dependencies = {corlib = "*", LibClang = "*"}
 
 [Project]
 Name = "Rune's C2Beef Binding Generator"
+Version = "1.0.1"
 StartupObject = "Rune.CBindingGenerator.Program"
 DefaultNamespace = "Rune.CBindingGenerator"
 
