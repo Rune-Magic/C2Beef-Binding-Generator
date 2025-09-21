@@ -51,7 +51,6 @@ typealias CXClientData = void*;
 	/** The length of the unsaved contents of this buffer.
 	 */
 	public c_ulong Length;
-
 }
 
 /** Describes the availability of a particular entity, which indicates
@@ -77,7 +76,6 @@ typealias CXClientData = void*;
 	 *  an error.
 	 */
 	NotAccessible = 3,
-
 }
 
 /** Describes a version number of the form major.minor.subminor.
@@ -100,7 +98,6 @@ typealias CXClientData = void*;
 	 *  e.g., in version '10' or '10.7'.
 	 */
 	public c_int Subminor;
-
 }
 
 /** Describes the exception specification of a cursor.
@@ -147,7 +144,6 @@ typealias CXClientData = void*;
 	/** The cursor has a __declspec(nothrow) exception specification.
 	 */
 	NoThrow = 9,
-
 }
 
 extension Clang
@@ -210,34 +206,32 @@ extension Clang
 	/** Disable the option.
 	 */
 	Disabled = 2,
-
 }
 
 [CRepr, AllowDuplicates] enum CXGlobalOptFlags : c_int
 {
 	/** Used to indicate that no special CXIndex options are needed.
 	 */
-	None = 0,
+	None = 0x0,
 
 	/** Used to indicate that threads that libclang creates for indexing
 	 *  purposes should use background priority.
 	 *  Affects #clang_indexSourceFile, #clang_indexTranslationUnit,
 	 *  #clang_parseTranslationUnit, #clang_saveTranslationUnit.
 	 */
-	ThreadBackgroundPriorityForIndexing = 1,
+	ThreadBackgroundPriorityForIndexing = 0x1,
 
 	/** Used to indicate that threads that libclang creates for editing
 	 *  purposes should use background priority.
 	 *  Affects #clang_reparseTranslationUnit, #clang_codeCompleteAt,
 	 *  #clang_annotateTokens
 	 */
-	ThreadBackgroundPriorityForEditing = 2,
+	ThreadBackgroundPriorityForEditing = 0x2,
 
 	/** Used to indicate that all threads that libclang creates should use
 	 *  background priority.
 	 */
-	ThreadBackgroundPriorityForAll = 3 /* CXGlobalOpt_ThreadBackgroundPriorityForIndexing | CXGlobalOpt_ThreadBackgroundPriorityForEditing */,
-
+	ThreadBackgroundPriorityForAll = ThreadBackgroundPriorityForIndexing | ThreadBackgroundPriorityForEditing,
 }
 
 /** Index initialization options.
@@ -286,16 +280,16 @@ extension Clang
 	/** 
 	 *  @see clang_createIndex()
 	 */
-	[Bitfield(.Public, .BitsAt(pos: 0, bits: 1), "ExcludeDeclarationsFromPCH")]
+	[Bitfield(.Public, .BitsAt(bits: 1, pos: 0), "ExcludeDeclarationsFromPCH")]
 
 	/** 
 	 *  @see clang_createIndex()
 	 */
-	[Bitfield(.Public, .BitsAt(pos: 1, bits: 1), "DisplayDiagnostics")]
+	[Bitfield(.Public, .BitsAt(bits: 1, pos: 1), "DisplayDiagnostics")]
 
 	/** Store PCH in memory. If zero, PCH are stored in temporary files.
 	 */
-	[Bitfield(.Public, .BitsAt(pos: 2, bits: 1), "StorePreamblesInMemory")]
+	[Bitfield(.Public, .BitsAt(bits: 1, pos: 2), "StorePreamblesInMemory")]
 
 	private uint32 __bitfield_12777;
 
@@ -312,7 +306,6 @@ extension Clang
 	 *  invocations. A null value implies that libclang invocations are not logged.
 	 */
 	public c_char* InvocationEmissionPath;
-
 }
 
 extension Clang
@@ -549,7 +542,7 @@ extension Clang
 	/** Used to indicate that no special translation-unit options are
 	 *  needed.
 	 */
-	None = 0,
+	None = 0x0,
 
 	/** Used to indicate that the parser should construct a "detailed"
 	 *  preprocessing record, including all macro definitions and instantiations.
@@ -559,7 +552,7 @@ extension Clang
 	 *  applications that require more detailed information about the
 	 *  behavior of the preprocessor.
 	 */
-	DetailedPreprocessingRecord = 1,
+	DetailedPreprocessingRecord = 0x01,
 
 	/** Used to indicate that the translation unit is incomplete.
 	 *  When a translation unit is considered "incomplete", semantic
@@ -570,7 +563,7 @@ extension Clang
 	 *  C++. This option is typically used when parsing a header with the
 	 *  intent of producing a precompiled header.
 	 */
-	Incomplete = 2,
+	Incomplete = 0x02,
 
 	/** Used to indicate that the translation unit should be built with an
 	 *  implicit precompiled header for the preamble.
@@ -582,7 +575,7 @@ extension Clang
 	 *  the "preamble" of the file). In subsequent parses, if the
 	 *  preamble or the files in it have not changed, @c clang_reparseTranslationUnit() will re-use the implicit precompiled header to improve parsing performance.
 	 */
-	PrecompiledPreamble = 4,
+	PrecompiledPreamble = 0x04,
 
 	/** Used to indicate that the translation unit should cache some
 	 *  code-completion results with each reparse of the source file.
@@ -590,39 +583,39 @@ extension Clang
 	 *  introduces some overhead to reparsing but improves the performance of
 	 *  code-completion operations.
 	 */
-	CacheCompletionResults = 8,
+	CacheCompletionResults = 0x08,
 
 	/** Used to indicate that the translation unit will be serialized with
 	 *  @c clang_saveTranslationUnit. 
 	 *  This option is typically used when parsing a header with the intent of producing a precompiled header.
 	 */
-	orSerialization = 16,
+	orSerialization = 0x10,
 
 	/** DEPRECATED: Enabled chained precompiled preambles in C++.
 	 *  Note: this is a *temporary* option that is available only while
 	 *  we are testing C++ precompiled preamble support. It is deprecated.
 	 */
-	CXXChainedPCH = 32,
+	CXXChainedPCH = 0x20,
 
 	/** Used to indicate that function/method bodies should be skipped while
 	 *  parsing.
 	 *  This option can be used to search for declarations/definitions while
 	 *  ignoring the usages.
 	 */
-	SkipFunctionBodies = 64,
+	SkipFunctionBodies = 0x40,
 
 	/** Used to indicate that brief documentation comments should be
 	 *  included into the set of code completions returned from this translation
 	 *  unit.
 	 */
-	IncludeBriefCommentsInCodeCompletion = 128,
+	IncludeBriefCommentsInCodeCompletion = 0x80,
 
 	/** Used to indicate that the precompiled preamble should be created on
 	 *  the first parse. Otherwise it will be created on the first reparse. This
 	 *  trades runtime on the first parse (serializing the preamble takes time) for
 	 *  reduced runtime on the second parse (can now reuse the preamble).
 	 */
-	CreatePreambleOnFirstParse = 256,
+	CreatePreambleOnFirstParse = 0x100,
 
 	/** Do not stop processing when fatal errors are encountered.
 	 *  When fatal errors are encountered while parsing a translation unit,
@@ -631,25 +624,25 @@ extension Clang
 	 *  purposes of an IDE, this is undesirable behavior and as much information
 	 *  as possible should be reported. Use this flag to enable this behavior.
 	 */
-	KeepGoing = 512,
+	KeepGoing = 0x200,
 
 	/** Sets the preprocessor in a mode for parsing a single file only.
 	 */
-	SingleFileParse = 1024,
+	SingleFileParse = 0x400,
 
 	/** Used in combination with CXTranslationUnit_SkipFunctionBodies to
 	 *  constrain the skipping of function bodies to the preamble.
 	 *  The function bodies of the main file are not skipped.
 	 */
-	LimitSkipFunctionBodiesToPreamble = 2048,
+	LimitSkipFunctionBodiesToPreamble = 0x800,
 
 	/** Used to indicate that attributed types should be included in CXType.
 	 */
-	IncludeAttributedTypes = 4096,
+	IncludeAttributedTypes = 0x1000,
 
 	/** Used to indicate that implicit attributes should be visited.
 	 */
-	VisitImplicitAttributes = 8192,
+	VisitImplicitAttributes = 0x2000,
 
 	/** Used to indicate that non-errors from included files should be ignored.
 	 *  If set, clang_getDiagnosticSetFromTU() will not report e.g. warnings from
@@ -657,12 +650,11 @@ extension Clang
 	 *  the case where these warnings are not of interest, as for an IDE for
 	 *  example, which typically shows only the diagnostics in the main file.
 	 */
-	IgnoreNonErrorsFromIncludedFiles = 16384,
+	IgnoreNonErrorsFromIncludedFiles = 0x4000,
 
 	/** Tells the preprocessor not to skip excluded conditional blocks.
 	 */
-	RetainExcludedConditionalBlocks = 32768,
-
+	RetainExcludedConditionalBlocks = 0x8000,
 }
 
 extension Clang
@@ -737,8 +729,7 @@ extension Clang
 {
 	/** Used to indicate that no special saving options are needed.
 	 */
-	None = 0,
-
+	None = 0x0,
 }
 
 extension Clang
@@ -779,7 +770,6 @@ extension Clang
 	 *  invalid (e.g., NULL).
 	 */
 	InvalidTU = 3,
-
 }
 
 extension Clang
@@ -826,8 +816,7 @@ extension Clang
 {
 	/** Used to indicate that no special reparsing options are needed.
 	 */
-	None = 0,
-
+	None = 0x0,
 }
 
 extension Clang
@@ -893,10 +882,10 @@ extension Clang
 	PreprocessingRecord = 12,
 	SourceManager_DataStructures = 13,
 	Preprocessor_HeaderSearch = 14,
-	MEMORY_IN_BYTES_BEGIN = 1 /* CXTUResourceUsage_AST */,
-	MEMORY_IN_BYTES_END = 14 /* CXTUResourceUsage_Preprocessor_HeaderSearch */,
-	First = 1 /* CXTUResourceUsage_AST */,
-	Last = 14 /* CXTUResourceUsage_Preprocessor_HeaderSearch */,
+	MEMORY_IN_BYTES_BEGIN = AST,
+	MEMORY_IN_BYTES_END = Preprocessor_HeaderSearch,
+	First = AST,
+	Last = Preprocessor_HeaderSearch,
 }
 
 extension Clang
@@ -1119,11 +1108,11 @@ extension Clang
 
 	/** An access specifier. 
 	 */
-	FirstDecl = 1 /* CXCursor_UnexposedDecl */,
+	FirstDecl = UnexposedDecl,
 
 	/** An access specifier. 
 	 */
-	LastDecl = 39 /* CXCursor_CXXAccessSpecifier */,
+	LastDecl = CXXAccessSpecifier,
 
 	/** An access specifier. 
 	 */
@@ -1237,7 +1226,7 @@ extension Clang
 	/** A reference to a variable that occurs in some non-expression
 	 *  context, e.g., a C++ lambda capture list.
 	 */
-	LastRef = 50 /* CXCursor_VariableRef */,
+	LastRef = VariableRef,
 
 	/** A reference to a variable that occurs in some non-expression
 	 *  context, e.g., a C++ lambda capture list.
@@ -1267,7 +1256,7 @@ extension Clang
 	/** A reference to a variable that occurs in some non-expression
 	 *  context, e.g., a C++ lambda capture list.
 	 */
-	LastInvalid = 73 /* CXCursor_InvalidCode */,
+	LastInvalid = InvalidCode,
 
 	/** A reference to a variable that occurs in some non-expression
 	 *  context, e.g., a C++ lambda capture list.
@@ -1574,7 +1563,7 @@ extension Clang
 
 	/** Represents a C++26 pack indexing expression.
 	 */
-	LastExpr = 156 /* CXCursor_PackIndexingExpr */,
+	LastExpr = PackIndexingExpr,
 
 	/** Represents a C++26 pack indexing expression.
 	 */
@@ -1661,7 +1650,7 @@ extension Clang
 
 	/** A GCC inline assembly statement extension.
 	 */
-	AsmStmt = 215 /* CXCursor_GCCAsmStmt */,
+	AsmStmt = GCCAsmStmt,
 
 	/** Objective-C's overall @try- @catch- @finally statement. 
 	 */
@@ -2103,7 +2092,7 @@ extension Clang
 
 	/** OpenACC cache Construct.
 	 */
-	LastStmt = 333 /* CXCursor_OpenACCCacheConstruct */,
+	LastStmt = OpenACCCacheConstruct,
 
 	/** Cursor that represents the translation unit itself.
 	 *  The translation unit cursor exists primarily to act as the root
@@ -2330,7 +2319,7 @@ extension Clang
 	/** An attribute whose specific kind is not exposed via this
 	 *  interface.
 	 */
-	LastAttr = 441 /* CXCursor_AlignedAttr */,
+	LastAttr = AlignedAttr,
 
 	/** An attribute whose specific kind is not exposed via this
 	 *  interface.
@@ -2350,7 +2339,7 @@ extension Clang
 	/** An attribute whose specific kind is not exposed via this
 	 *  interface.
 	 */
-	MacroInstantiation = 502 /* CXCursor_MacroExpansion */,
+	MacroInstantiation = MacroExpansion,
 
 	/** An attribute whose specific kind is not exposed via this
 	 *  interface.
@@ -2360,12 +2349,12 @@ extension Clang
 	/** An attribute whose specific kind is not exposed via this
 	 *  interface.
 	 */
-	FirstPreprocessing = 500 /* CXCursor_PreprocessingDirective */,
+	FirstPreprocessing = PreprocessingDirective,
 
 	/** An attribute whose specific kind is not exposed via this
 	 *  interface.
 	 */
-	LastPreprocessing = 503 /* CXCursor_InclusionDirective */,
+	LastPreprocessing = InclusionDirective,
 
 	/** A module import declaration.
 	 */
@@ -2389,16 +2378,15 @@ extension Clang
 
 	/** a concept declaration.
 	 */
-	FirstExtraDecl = 600 /* CXCursor_ModuleImportDecl */,
+	FirstExtraDecl = ModuleImportDecl,
 
 	/** a concept declaration.
 	 */
-	LastExtraDecl = 604 /* CXCursor_ConceptDecl */,
+	LastExtraDecl = ConceptDecl,
 
 	/** A code completion overload candidate.
 	 */
 	OverloadCandidate = 700,
-
 }
 
 /** A cursor representing some element in the abstract syntax tree for
@@ -2536,7 +2524,6 @@ extension Clang
 	/** This is the linkage for entities with true, external linkage. 
 	 */
 	External = 4,
-
 }
 
 extension Clang
@@ -2564,7 +2551,6 @@ extension Clang
 	/** Symbol seen by the linker and acts like a normal symbol. 
 	 */
 	Default = 3,
-
 }
 
 extension Clang
@@ -2623,7 +2609,6 @@ extension Clang
 	 *  suggest replacement APIs.
 	 */
 	public CXString Message;
-
 }
 
 extension Clang
@@ -3094,12 +3079,12 @@ extension Clang
 	/** A type whose specific kind is not exposed via this
 	 *  interface.
 	 */
-	FirstBuiltin = 2 /* CXType_Void */,
+	FirstBuiltin = Void,
 
 	/** A type whose specific kind is not exposed via this
 	 *  interface.
 	 */
-	LastBuiltin = 40 /* CXType_Ibm128 */,
+	LastBuiltin = Ibm128,
 
 	/** A type whose specific kind is not exposed via this
 	 *  interface.
@@ -3530,7 +3515,6 @@ extension Clang
 	 *  E.g., struct S, or via a qualified name, e.g., N::M::type, or both.
 	 */
 	HLSLInlineSpirv = 181,
-
 }
 
 /** Describes the calling convention of a function type
@@ -3548,7 +3532,7 @@ extension Clang
 	X86RegCall = 8,
 	IntelOclBicc = 9,
 	Win64 = 10,
-	X86_64Win64 = 10 /* CXCallingConv_Win64 */,
+	X86_64Win64 = Win64,
 	X86_64SysV = 11,
 	X86VectorCall = 12,
 	Swift = 13,
@@ -4027,7 +4011,6 @@ extension Clang
 	 *  assumed to only get null on error.
 	 */
 	NullableResult = 4,
-
 }
 
 extension Clang
@@ -4044,28 +4027,27 @@ extension Clang
 {
 	/** Type is of kind CXType_Invalid.
 	 */
-	Invalid = -1 /* -1 */,
+	Invalid =  - 1,
 
 	/** The type is an incomplete Type.
 	 */
-	Incomplete = -2 /* -2 */,
+	Incomplete =  - 2,
 
 	/** The type is a dependent Type.
 	 */
-	Dependent = -3 /* -3 */,
+	Dependent =  - 3,
 
 	/** The type is not a constant size type.
 	 */
-	NotConstantSize = -4 /* -4 */,
+	NotConstantSize =  - 4,
 
 	/** The Field name is not valid for this record.
 	 */
-	InvalidFieldName = -5 /* -5 */,
+	InvalidFieldName =  - 5,
 
 	/** The type is undeduced.
 	 */
-	Undeduced = -6 /* -6 */,
-
+	Undeduced =  - 6,
 }
 
 extension Clang
@@ -4161,7 +4143,6 @@ extension Clang
 	/** An rvalue ref-qualifier was provided (@c &&).  
 	 */
 	RValue = 2,
-
 }
 
 extension Clang
@@ -4271,7 +4252,7 @@ extension Clang
 	O_XorAssign = 31,
 	O_OrAssign = 32,
 	O_Comma = 33,
-	O_LAST = 33 /* CX_BO_Comma */,
+	O_LAST = O_Comma,
 }
 
 extension Clang
@@ -4346,7 +4327,6 @@ extension Clang
 	 *  the same visitor and client data.
 	 */
 	Recurse = 2,
-
 }
 
 /** Visitor invoked for each cursor found by a traversal.
@@ -4481,7 +4461,7 @@ class CXPrintingPolicy { private this() {} }
 	ConstantsAsWritten = 23,
 	SuppressImplicitBase = 24,
 	FullyQualifiedName = 25,
-	LastProperty = 25 /* CXPrintingPolicy_FullyQualifiedName */,
+	LastProperty = FullyQualifiedName,
 }
 
 extension Clang
@@ -4630,20 +4610,20 @@ extension Clang
  */
 [CRepr, AllowDuplicates] enum CXObjCPropertyAttrKind : c_int
 {
-	noattr = 0,
-	@readonly = 1,
-	getter = 2,
-	assign = 4,
-	readwrite = 8,
-	retain = 16,
-	copy = 32,
-	nonatomic = 64,
-	setter = 128,
-	atomic = 256,
-	weak = 512,
-	strong = 1024,
-	unsafe_unretained = 2048,
-	@class = 4096,
+	noattr = 0x00,
+	@readonly = 0x01,
+	getter = 0x02,
+	assign = 0x04,
+	readwrite = 0x08,
+	retain = 0x10,
+	copy = 0x20,
+	nonatomic = 0x40,
+	setter = 0x80,
+	atomic = 0x100,
+	weak = 0x200,
+	strong = 0x400,
+	unsafe_unretained = 0x800,
+	@class = 0x1000,
 }
 
 extension Clang
@@ -4672,13 +4652,13 @@ extension Clang
  */
 [CRepr, AllowDuplicates] enum CXObjCDeclQualifierKind : c_int
 {
-	None = 0,
-	In = 1,
-	Inout = 2,
-	Out = 4,
-	Bycopy = 8,
-	Byref = 16,
-	Oneway = 32,
+	None = 0x0,
+	In = 0x1,
+	Inout = 0x2,
+	Out = 0x4,
+	Bycopy = 0x8,
+	Byref = 0x10,
+	Oneway = 0x20,
 }
 
 extension Clang
@@ -5123,7 +5103,7 @@ extension Clang
 	/** Include the nested-name-specifier, e.g. Foo:: in x.Foo::y, in the
 	 *  range.
 	 */
-	ange_WantQualifier = 1,
+	ange_WantQualifier = 0x1,
 
 	/** Include the explicit template arguments, e.g. 
 	 *  <
@@ -5132,7 +5112,7 @@ extension Clang
 	 *  >,
 	 *  in the range.
 	 */
-	ange_WantTemplateArgs = 2,
+	ange_WantTemplateArgs = 0x2,
 
 	/** If the name is non-contiguous, return the full spanning range.
 	 *  Non-contiguous names occur in Objective-C when a selector with two or more
@@ -5144,8 +5124,7 @@ extension Clang
 	 *  ```
 	 *  
 	 */
-	ange_WantSinglePiece = 4,
-
+	ange_WantSinglePiece = 0x4,
 }
 
 /** Describes a kind of token.
@@ -5171,7 +5150,6 @@ extension Clang
 	/** A comment.
 	 */
 	Comment = 4,
-
 }
 
 /** Describes a single preprocessing token.
@@ -5304,7 +5282,6 @@ class CXCompletionString { private this() {} }
 	 *  code-completion result into the editing buffer.
 	 */
 	public CXCompletionString CompletionString;
-
 }
 
 /** Describes a single piece of text within a code-completion string.
@@ -5461,7 +5438,6 @@ class CXCompletionString { private this() {} }
 	/** Vertical space ('@n'), after which it is generally a good idea to perform indentation.
 	 */
 	VerticalSpace = 20,
-
 }
 
 extension Clang
@@ -5592,7 +5568,6 @@ extension Clang
 	 *  @c Results array. 
 	 */
 	public c_uint NumResults;
-
 }
 
 extension Clang
@@ -5664,29 +5639,28 @@ extension Clang
 	/** Whether to include macros within the set of code
 	 *  completions returned.
 	 */
-	IncludeMacros = 1,
+	IncludeMacros = 0x01,
 
 	/** Whether to include code patterns for language constructs
 	 *  within the set of code completions, e.g., for loops.
 	 */
-	IncludeCodePatterns = 2,
+	IncludeCodePatterns = 0x02,
 
 	/** Whether to include brief documentation within the set of code
 	 *  completions returned.
 	 */
-	IncludeBriefComments = 4,
+	IncludeBriefComments = 0x04,
 
 	/** Whether to speed up completion by omitting top- or namespace-level entities
 	 *  defined in the preamble. There's no guarantee any particular entity is
 	 *  omitted. This may be useful if the headers are indexed externally.
 	 */
-	SkipPreamble = 8,
+	SkipPreamble = 0x08,
 
 	/** Whether to include completions with small
 	 *  fix-its, e.g. change '.' to '->' on member access, etc.
 	 */
-	IncludeCompletionsWithFixIts = 16,
-
+	IncludeCompletionsWithFixIts = 0x10,
 }
 
 /** Bits that represent the context under which completion is occurring.
@@ -5702,116 +5676,115 @@ extension Clang
 
 	/** Completions for any possible type should be included in the results.
 	 */
-	AnyType = 1 /* 1<<0 */,
+	AnyType = 1 << 0,
 
 	/** Completions for any possible value (variables, function calls, etc.)
 	 *  should be included in the results.
 	 */
-	AnyValue = 2 /* 1<<1 */,
+	AnyValue = 1 << 1,
 
 	/** Completions for values that resolve to an Objective-C object should
 	 *  be included in the results.
 	 */
-	ObjCObjectValue = 4 /* 1<<2 */,
+	ObjCObjectValue = 1 << 2,
 
 	/** Completions for values that resolve to an Objective-C selector
 	 *  should be included in the results.
 	 */
-	ObjCSelectorValue = 8 /* 1<<3 */,
+	ObjCSelectorValue = 1 << 3,
 
 	/** Completions for values that resolve to a C++ class type should be
 	 *  included in the results.
 	 */
-	CXXClassTypeValue = 16 /* 1<<4 */,
+	CXXClassTypeValue = 1 << 4,
 
 	/** Completions for fields of the member being accessed using the dot
 	 *  operator should be included in the results.
 	 */
-	DotMemberAccess = 32 /* 1<<5 */,
+	DotMemberAccess = 1 << 5,
 
 	/** Completions for fields of the member being accessed using the arrow
 	 *  operator should be included in the results.
 	 */
-	ArrowMemberAccess = 64 /* 1<<6 */,
+	ArrowMemberAccess = 1 << 6,
 
 	/** Completions for properties of the Objective-C object being accessed
 	 *  using the dot operator should be included in the results.
 	 */
-	ObjCPropertyAccess = 128 /* 1<<7 */,
+	ObjCPropertyAccess = 1 << 7,
 
 	/** Completions for enum tags should be included in the results.
 	 */
-	EnumTag = 256 /* 1<<8 */,
+	EnumTag = 1 << 8,
 
 	/** Completions for union tags should be included in the results.
 	 */
-	UnionTag = 512 /* 1<<9 */,
+	UnionTag = 1 << 9,
 
 	/** Completions for struct tags should be included in the results.
 	 */
-	StructTag = 1024 /* 1<<10 */,
+	StructTag = 1 << 10,
 
 	/** Completions for C++ class names should be included in the results.
 	 */
-	ClassTag = 2048 /* 1<<11 */,
+	ClassTag = 1 << 11,
 
 	/** Completions for C++ namespaces and namespace aliases should be
 	 *  included in the results.
 	 */
-	Namespace = 4096 /* 1<<12 */,
+	Namespace = 1 << 12,
 
 	/** Completions for C++ nested name specifiers should be included in
 	 *  the results.
 	 */
-	NestedNameSpecifier = 8192 /* 1<<13 */,
+	NestedNameSpecifier = 1 << 13,
 
 	/** Completions for Objective-C interfaces (classes) should be included
 	 *  in the results.
 	 */
-	ObjCInterface = 16384 /* 1<<14 */,
+	ObjCInterface = 1 << 14,
 
 	/** Completions for Objective-C protocols should be included in
 	 *  the results.
 	 */
-	ObjCProtocol = 32768 /* 1<<15 */,
+	ObjCProtocol = 1 << 15,
 
 	/** Completions for Objective-C categories should be included in
 	 *  the results.
 	 */
-	ObjCCategory = 65536 /* 1<<16 */,
+	ObjCCategory = 1 << 16,
 
 	/** Completions for Objective-C instance messages should be included
 	 *  in the results.
 	 */
-	ObjCInstanceMessage = 131072 /* 1<<17 */,
+	ObjCInstanceMessage = 1 << 17,
 
 	/** Completions for Objective-C class messages should be included in
 	 *  the results.
 	 */
-	ObjCClassMessage = 262144 /* 1<<18 */,
+	ObjCClassMessage = 1 << 18,
 
 	/** Completions for Objective-C selector names should be included in
 	 *  the results.
 	 */
-	ObjCSelectorName = 524288 /* 1<<19 */,
+	ObjCSelectorName = 1 << 19,
 
 	/** Completions for preprocessor macro names should be included in
 	 *  the results.
 	 */
-	MacroName = 1048576 /* 1<<20 */,
+	MacroName = 1 << 20,
 
 	/** Natural language completions should be included in the results.
 	 */
-	NaturalLanguage = 2097152 /* 1<<21 */,
+	NaturalLanguage = 1 << 21,
 
 	/** #include file completions should be included in the results.
 	 */
-	IncludedFile = 4194304 /* 1<<22 */,
+	IncludedFile = 1 << 22,
 
 	/** The current context is unknown, so set all contexts.
 	 */
-	Unknown = 8388607 /* ((1<<23)-1) */,
-
+	Unknown = ((1 << 23) - 1),
 }
 
 extension Clang
@@ -6089,7 +6062,6 @@ extension Clang
 	 *  CXVisit_Break)
 	 */
 	VisitBreak = 2,
-
 }
 
 extension Clang
@@ -6193,7 +6165,6 @@ class CXIdxClientASTFile { private this() {} }
 	 *  import.
 	 */
 	public c_int isModuleImport;
-
 }
 
 /** Data for IndexerCallbacks#importedASTFile.
@@ -6216,7 +6187,6 @@ class CXIdxClientASTFile { private this() {} }
 	 *  a module import. Applicable only for modules.
 	 */
 	public c_int isImplicit;
-
 }
 
 [CRepr, AllowDuplicates] enum CXIdxEntityKind : c_int
@@ -6319,7 +6289,7 @@ class CXIdxClientASTFile { private this() {} }
 
 [CRepr, AllowDuplicates] enum CXIdxDeclInfoFlags : c_int
 {
-	Flag_Skipped = 1,
+	Flag_Skipped = 0x1,
 }
 
 [CRepr] struct CXIdxDeclInfo
@@ -6426,7 +6396,6 @@ class CXIdxClientASTFile { private this() {} }
 	 *  via the dot syntax.
 	 */
 	Implicit = 2,
-
 }
 
 /** Roles that are attributed to symbol occurrences.
@@ -6436,15 +6405,15 @@ class CXIdxClientASTFile { private this() {} }
 [CRepr, AllowDuplicates] enum CXSymbolRole : c_int
 {
 	None = 0,
-	Declaration = 1 /* 1<<0 */,
-	Definition = 2 /* 1<<1 */,
-	Reference = 4 /* 1<<2 */,
-	Read = 8 /* 1<<3 */,
-	Write = 16 /* 1<<4 */,
-	Call = 32 /* 1<<5 */,
-	Dynamic = 64 /* 1<<6 */,
-	AddressOf = 128 /* 1<<7 */,
-	Implicit = 256 /* 1<<8 */,
+	Declaration = 1 << 0,
+	Definition = 1 << 1,
+	Reference = 1 << 2,
+	Read = 1 << 3,
+	Write = 1 << 4,
+	Call = 1 << 5,
+	Dynamic = 1 << 6,
+	AddressOf = 1 << 7,
+	Implicit = 1 << 8,
 }
 
 /** Data for IndexerCallbacks#indexEntityReference.
@@ -6481,7 +6450,6 @@ class CXIdxClientASTFile { private this() {} }
 	/** Sets of symbol roles of the reference.
 	 */
 	public CXSymbolRole role;
-
 }
 
 /** A group of callbacks used by #clang_indexSourceFile and
@@ -6525,7 +6493,6 @@ class CXIdxClientASTFile { private this() {} }
 	/** Called to index a reference of an entity.
 	 */
 	public function void(CXClientData, CXIdxEntityRefInfo*) indexEntityReference;
-
 }
 
 extension Clang
@@ -6583,33 +6550,32 @@ extension Clang
 {
 	/** Used to indicate that no special indexing options are needed.
 	 */
-	None = 0,
+	None = 0x0,
 
 	/** Used to indicate that IndexerCallbacks#indexEntityReference should
 	 *  be invoked for only one reference of an entity per source file that does
 	 *  not also include a declaration/definition of the entity.
 	 */
-	SuppressRedundantRefs = 1,
+	SuppressRedundantRefs = 0x1,
 
 	/** Function-local symbols should be indexed. If this is not set
 	 *  function-local symbols will be ignored.
 	 */
-	IndexFunctionLocalSymbols = 2,
+	IndexFunctionLocalSymbols = 0x2,
 
 	/** Implicit function/class template instantiations should be indexed.
 	 *  If this is not set, implicit instantiations will be ignored.
 	 */
-	IndexImplicitTemplateInstantiations = 4,
+	IndexImplicitTemplateInstantiations = 0x4,
 
 	/** Suppress all compiler warnings when parsing for indexing.
 	 */
-	SuppressWarnings = 8,
+	SuppressWarnings = 0x8,
 
 	/** Skip a function/method body that was already parsed during an
 	 *  indexing session associated with a @c CXIndexAction object. Bodies in system headers are always skipped.
 	 */
-	SkipParsedBodiesInSession = 16,
-
+	SkipParsedBodiesInSession = 0x10,
 }
 
 extension Clang
@@ -6877,8 +6843,7 @@ extension Clang
 
 	/** Comma operator. 
 	 */
-	Last = 33 /* CXBinaryOperator_Comma */,
-
+	Last = Comma,
 }
 
 extension Clang
@@ -6956,7 +6921,6 @@ extension Clang
 	/** C++ co_await operator. 
 	 */
 	Coawait = 14,
-
 }
 
 extension Clang

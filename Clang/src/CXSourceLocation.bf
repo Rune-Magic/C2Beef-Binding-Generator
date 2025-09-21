@@ -212,7 +212,6 @@ extension Clang
 	/** An array of @c CXSourceRanges.  
 	 */
 	public CXSourceRange* ranges;
-
 }
 
 extension Clang

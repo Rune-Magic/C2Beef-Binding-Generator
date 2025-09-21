@@ -111,7 +111,6 @@ extension Clang
 	/** A full comment attached to a declaration, contains block content.
 	 */
 	FullComment = 12,
-
 }
 
 /** The most appropriate rendering mode for an inline command, chosen on
@@ -139,7 +138,6 @@ extension Clang
 	/** Command argument should not be rendered (since it only defines an anchor).
 	 */
 	Anchor = 4,
-
 }
 
 /** Describes parameter passing direction for @param or  @arg command. 
@@ -157,7 +155,6 @@ extension Clang
 	/** The parameter is an input and output parameter.
 	 */
 	InOut = 2,
-
 }
 
 extension Clang

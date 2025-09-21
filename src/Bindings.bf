@@ -608,10 +608,10 @@ static class CBindings
 
 						if (String.StrLen(GetString!(Clang.GetCursorSpelling(cursor))) > 0)
 						{
-							output.Append(doubleIndent, "[Bitfield(.Public, .BitsAt(pos: ");
-							(*bitFieldTotalWidth).ToString(output);
-							output.Append(", bits: ");
+							output.Append(doubleIndent, "[Bitfield(.Public, .BitsAt(bits: ");
 							width.ToString(output);
+							output.Append(", pos: ");
+							(*bitFieldTotalWidth).ToString(output);
 							output.Append("), \"");
 							AddSpelling(cursor, library, output);
 							output.Append("\")]\n");
@@ -669,6 +669,7 @@ static class CBindings
 			}, &(output, &putNewLine, doubleIndent, library, unit, &bitFieldCurrentBlockSize, &bitFieldTotalWidth));
 			if (bitFieldTotalWidth > 0)
 				DumpBitfield(output, &bitFieldCurrentBlockSize, &bitFieldTotalWidth, cursor, doubleIndent);
+			if (output.EndsWith("\n\n")) output.RemoveFromEnd(1);
 			output.Append(indent, "}\n\n");
 			*newLine = false;
 
@@ -708,7 +709,7 @@ static class CBindings
 				output.Append(indent);
 				if (anonymous) output.Append("public static c_int ");
 				Compiler.Identifier.GetSourceName(spelling, output);
-				output..Append(" = ")..Append(Clang.GetEnumConstantDeclValue(cursor));
+				output.Append(" = ");
 				if (anonymous)
 					output.Append(';');
 				else do
@@ -718,24 +719,41 @@ static class CBindings
 					uint32 tokenCount = 0;
 					Clang.Tokenize(unit, Clang.GetCursorExtent(cursor), &tokens, &tokenCount);
 					defer Clang.DisposeTokens(unit, tokens, tokenCount);
-					if (tokenCount < 3) break;
-					if (tokenCount == 3 && Clang.GetTokenKind(tokens[2]) == .Literal)
+					if (tokenCount < 3)
+					{
+						Clang.GetEnumConstantDeclValue(cursor).ToString(output);
 						break;
-					output.Append(" /* ");
+					}
 					for (int tokenIdx = 2; tokenIdx < tokenCount; tokenIdx++)
 					{
 						StringView spell = .(GetString!(Clang.GetTokenSpelling(unit, tokens[tokenIdx])));
-						if (spell == "|") output.Append(" | ");
-						else output.Append(spell);
+						switch (Clang.GetTokenKind(tokens[tokenIdx]))
+						{
+						case .Punctuation:
+							switch (spell[0])
+							{
+							case '|', '&', '^', '<', '>', '+', '-', '*', '/':
+								output..Append(' ')..Append(spell)..Append(' ');
+							case ',':
+								output.Append(", ");
+							default:
+								output.Append(spell);
+							}
+						case .Identifier:
+							library.modifyEnumCaseSpelling?.Invoke(ref spell, parentSpelling, out toDelete);
+							output.Append(spell);
+							delete toDelete;
+						default: output.Append(spell);
+						}
 					}
-					output.Append(" */");
 				}
 				output.Append('\n');
 				if (hasDoc) output.Append('\n');
 				*newLine = !hasDoc;
 				return .Continue;
 			}, &(output, &putNewLine, (anonymous ? indent : doubleIndent), library, anonymous, unit, spelling));
-#unwarn
+
+			if (output.EndsWith("\n\n")) output.RemoveFromEnd(1);
 			if (!anonymous) output.Append(indent, "}\n");
 			output.Append('\n');
 			*newLine = false;

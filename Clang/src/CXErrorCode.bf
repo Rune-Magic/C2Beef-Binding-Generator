@@ -34,6 +34,5 @@ namespace LibClang;
 	/** An AST deserialization error has occurred.
 	 */
 	ASTReadError = 4,
-
 }
 

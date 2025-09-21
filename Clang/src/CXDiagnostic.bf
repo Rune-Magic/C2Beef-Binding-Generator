@@ -35,7 +35,6 @@ namespace LibClang;
 	 *  results.
 	 */
 	Fatal = 4,
-
 }
 
 /** A single diagnostic, containing the diagnostic's severity,
@@ -88,7 +87,6 @@ extension Clang
 	 *  corrupt.
 	 */
 	InvalidFile = 3,
-
 }
 
 extension Clang
@@ -140,13 +138,13 @@ extension Clang
 	 *  ```
 	 *  This option corresponds to the clang flag @c -fshow-source-location.  
 	 */
-	DisplaySourceLocation = 1,
+	DisplaySourceLocation = 0x01,
 
 	/** If displaying the source-location information of the
 	 *  diagnostic, also include the column number.
 	 *  This option corresponds to the clang flag @c -fshow-column.  
 	 */
-	DisplayColumn = 2,
+	DisplayColumn = 0x02,
 
 	/** If displaying the source-location information of the
 	 *  diagnostic, also include information about source ranges in a
@@ -154,29 +152,28 @@ extension Clang
 	 *  This option corresponds to the clang flag
 	 *  @c -fdiagnostics-print-source-range-info.  
 	 */
-	DisplaySourceRanges = 4,
+	DisplaySourceRanges = 0x04,
 
 	/** Display the option name associated with this diagnostic, if any.
 	 *  The option name displayed (e.g., -Wconversion) will be placed in brackets
 	 *  after the diagnostic text. This option corresponds to the clang flag
 	 *  @c -fdiagnostics-show-option.  
 	 */
-	DisplayOption = 8,
+	DisplayOption = 0x08,
 
 	/** Display the category number associated with this diagnostic, if any.
 	 *  The category number is displayed within brackets after the diagnostic text.
 	 *  This option corresponds to the clang flag
 	 *  @c -fdiagnostics-show-category=id.  
 	 */
-	DisplayCategoryId = 16,
+	DisplayCategoryId = 0x10,
 
 	/** Display the category name associated with this diagnostic, if any.
 	 *  The category name is displayed within brackets after the diagnostic text.
 	 *  This option corresponds to the clang flag
 	 *  @c -fdiagnostics-show-category=name.  
 	 */
-	DisplayCategoryName = 32,
-
+	DisplayCategoryName = 0x20,
 }
 
 extension Clang
