@@ -11,7 +11,7 @@ namespace Rune.CBindingGenerator;
 static class CBindings
 {
 	/// args passed to clang, should always include '--language=c' or '-x c'
-	public static Span<char8*> args = char8*[?]("--language=c");
+	public static Span<char8*> args = null;
 
 	public enum Flags { None = 0, VulkanLike = 1 }
 	public class LibraryInfo
@@ -50,8 +50,16 @@ static class CBindings
 
 	public static void Generate(char8* header, StringView outputFile, StringView outputNamespace, LibraryInfo library, params Span<StringView> usingDepedencies)
 	{
+		Runtime.Assert(File.Exists(.(header)));
 		CXTranslationUnit_Flags unitFlags = .SkipFunctionBodies | .DetailedPreprocessingRecord;
-		let unit = Clang.ParseTranslationUnit(index, header, args.Ptr, (.)args.Length, null, 0, (.)unitFlags);
+		char8** argsPtr = args.Ptr; int32 argsCount = (.)args.Length;
+		char8* languageCArg = "--language=c"; 
+		if (args.IsNull)
+		{
+			argsPtr = &languageCArg;
+			argsCount = 1;
+		}
+		let unit = Clang.ParseTranslationUnit(index, header, argsPtr, argsCount, null, 0, (.)unitFlags);
 		if (unit == null) Runtime.FatalError(scope $"Failed to parse {StringView(header)}");
 		defer Clang.DisposeTranslationUnit(unit);
 
@@ -434,6 +442,7 @@ static class CBindings
 		switch (cursor.kind)
 		{
 		case .FunctionDecl:
+			if (Clang.GetCursorLinkage(cursor) != .External) return;
 			readonly StringView original = .(GetString!(Clang.GetCursorSpelling(cursor)));
 			StringView modified = .(original);
 			ModifySourceName(cursor, ref modified, library, let toDelete);
@@ -693,16 +702,23 @@ static class CBindings
 				output.Append("\n", indent, "{\n");
 			}
 			bool putNewLine = false;
+			CXString lastDocString = default;
 			Clang.VisitChildren(cursor, (cursor, parent, data) =>
 			{
 				if (cursor.kind != .EnumConstantDecl) return .Continue;
-				(String output, bool* newLine, StringView indent, LibraryInfo library, bool anonymous, CXTranslationUnit unit, StringView parentSpelling) = *(.)data;
+				(String output, bool* newLine, StringView indent, LibraryInfo library, bool anonymous, CXTranslationUnit unit, StringView parentSpelling, CXString* lastDocString) = *(.)data;
 				StringView spelling = .(GetString!(Clang.GetCursorSpelling(cursor)));
 				String toDelete = null;
 				library.modifyEnumCaseSpelling?.Invoke(ref spelling, parentSpelling, out toDelete);
 				defer delete toDelete;
 				bool hasDoc;
-				if (spelling.EndsWith("_MAX_ENUM"))
+				CXString docString = Clang.Cursor_GetRawCommentText(cursor);
+				defer
+				{
+					Clang.DisposeString(*lastDocString);
+					*lastDocString = docString;
+				}
+				if (StringView(Clang.GetCString(*lastDocString)) == StringView(Clang.GetCString(docString)))
 					hasDoc = false;
 				else
 					hasDoc = DocString(output, cursor, *newLine, indent);
@@ -767,7 +783,8 @@ static class CBindings
 				if (hasDoc) output.Append('\n');
 				*newLine = !hasDoc;
 				return .Continue;
-			}, &(output, &putNewLine, (anonymous ? indent : doubleIndent), library, anonymous, unit, spelling));
+			}, &(output, &putNewLine, (anonymous ? indent : doubleIndent), library, anonymous, unit, spelling, &lastDocString));
+			Clang.DisposeString(lastDocString);
 
 			if (output.EndsWith("\n\n")) output.RemoveFromEnd(1);
 			if (!anonymous) output.Append(indent, "}\n");
