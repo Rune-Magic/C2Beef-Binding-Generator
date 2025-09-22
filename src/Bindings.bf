@@ -44,6 +44,9 @@ static class CBindings
 
 		/// like modifySourceSpelling but for enum cases
 		public delegate void(ref StringView spelling, StringView parentSpelling, out String strBuffer) modifyEnumCaseSpelling = null;
+
+		/// add attributes to the binding declaration
+		public delegate bool(CXCursor cursor, StringView spelling, String output) addAttributes;
 	}
 
 	protected static volatile CXIndex index = Clang.CreateIndex(1, 1) ~ Clang.DisposeIndex(_);
@@ -167,14 +170,58 @@ static class CBindings
 	}
 
 
-	static StringView GetAttributes(CXCursor cursor)
+	protected static void GetAttributes(CXCursor cursor, LibraryInfo library, StringView spelling, CXType type, String output, Span<StringView> otherAttrs = default)
 	{
-		switch (cursor.kind)
+		bool attrs = false;
+		defer { if (attrs) output.Append(']'); }
+
+		mixin NextAttr()
 		{
-		case .StructDecl:	return "CRepr";
-		case .UnionDecl:	return "Union, CRepr";
-		case .EnumDecl:		return "CRepr, AllowDuplicates";
-		default:			return null;
+			if (attrs) output.Append(", ");
+			else
+			{
+				output.Append('[');
+				attrs = true;
+			}
+		}
+
+		for (let attr in otherAttrs)
+		{
+			if (attr.IsEmpty) continue;
+			NextAttr!();
+			output.Append(attr);
+		}
+
+		void Cursor(CXCursor cursor, StringView spelling)
+		{
+			switch (cursor.kind)
+			{
+			case .StructDecl:	NextAttr!(); output.Append("CRepr");
+			case .UnionDecl:	NextAttr!(); output.Append("Union, CRepr");
+			case .EnumDecl:		NextAttr!(); output.Append("AllowDuplicates");
+			default:
+			}
+
+			if (library.addAttributes != null)
+			{
+				String outString = scope .();
+				library.addAttributes(cursor, spelling, outString);
+				if (!outString.IsEmpty)
+				{
+					NextAttr!();
+					output.Append(outString);
+				}
+			}
+		}
+
+		if (cursor != default)
+			Cursor(cursor, spelling);
+
+		if (type.kind != .Invalid)
+		{
+			let decl = Clang.GetTypeDeclaration(type);
+			if (decl.kind == .NoDeclFound || Clang.Cursor_IsAnonymous(decl) == 0) return;
+			Cursor(decl, .(GetString!(Clang.GetCursorSpelling(decl))));
 		}
 	}
 
@@ -452,30 +499,14 @@ static class CBindings
 			let hasDoc = DocString(output, cursor, *newLine, indent);
 			output.Append(indent);
 			let resultType = Clang.GetCursorResultType(cursor);
+			attrs:
 			{
-				output.Append('[');
-				bool first = true;
-				mixin Comma()
-				{
-					if (!first) output.Append(", ");
-					first = false;
-				}
-
-				if (!library.customLinkage.IsEmpty) { Comma!(); output.Append(library.customLinkage); }
-				if (!library.customFunctionAttributes.IsEmpty) { Comma!(); output.Append(", ", library.customFunctionAttributes); }
-				Comma!();
+				StringView[?] attrs = .(library.customFunctionAttributes, library.customLinkage, "CLink");
 				if (original != modified)
-					output..Append("LinkName(\"", original, "\")");
-				else
-					output.Append("CLink");
-				let resultTypeDecl = Clang.GetTypeDeclaration(resultType);
-				if (Clang.Cursor_IsAnonymous(resultTypeDecl) != 0)
-				{
-					let attrs = GetAttributes(resultTypeDecl);
-					if (!attrs.IsNull) { Comma!(); output.Append(attrs); }
-				}
+					attrs[2] = scope:attrs String("LinkName(\"", original, "\")");
+				GetAttributes(cursor, library, original, resultType, output, attrs);
 			}
-			output.Append("] public static extern ");
+			output.Append(" public static extern ");
 			Type(resultType, output, library);
 			output.Append(' ');
 			if (Compiler.Identifier.sReservedNameSet.ContainsAlt(modified))
@@ -508,7 +539,6 @@ static class CBindings
 				let paramString = Clang.GetCursorSpelling(param);
 				StringView paramSpelling = .(Clang.GetCString(paramString));
 				var paramType = Clang.GetCursorType(param);
-				var paramTypeDecl = Clang.GetTypeDeclaration(paramType);
 				{
 					bool outParam = false;
 					if (outParams[i] || IsOutParam(paramType, library, paramSpelling, lastParamSpelling, docs)) do
@@ -516,11 +546,7 @@ static class CBindings
 						outParam = true;
 						paramType = Clang.GetPointeeType(paramType);
 					}
-					if (Clang.Cursor_IsAnonymous(paramTypeDecl) != 0)
-					{
-						let attrs = GetAttributes(paramTypeDecl);
-						if (!attrs.IsNull) output.Append("[", attrs, "] ");
-					}
+					GetAttributes(param, library, paramSpelling, paramType, output);
 					if (outParam) output.Append("out "); // defer is broken :(
 				}
 				Type(paramType, output, library);
@@ -545,13 +571,15 @@ static class CBindings
 
 		case .StructDecl, .UnionDecl:
 			int count = 0;
+			bool packed = false;
 			Clang.VisitChildren(cursor, (cursor, parent, data) =>
 			{
 				if (cursor.kind != .FieldDecl) return .Continue;
-				int* count = (.)data;
+				(int* count, bool* packed)  = *(.)data;
 				++ *count;
+				*packed = *packed || cursor.kind == .PackedAttr;
 				return .Continue;
-			}, &count);
+			}, &(&count, &packed));
 
 			if (count == 0) do
 			{
@@ -580,8 +608,8 @@ static class CBindings
 			let hasDoc = DocString(output, cursor, *newLine, indent);
 			if (!hasDoc && *newLine) output.Append('\n');
 			if (!inlinedType) output.Append(indent);
-			if (includeAttrs) output.Append("[", GetAttributes(cursor), "] ");
-			output.Append(block.HasValue ? "public struct " : "struct "); AddSpelling(cursor, library, output, lastDecls); output.Append("\n", indent, "{\n");
+			if (includeAttrs) GetAttributes(cursor, library, .(GetString!(Clang.GetCursorSpelling(cursor))), default, output, StringView[?](packed ? "Packed" : ""));
+			output.Append(block.HasValue ? " public struct " : " struct "); AddSpelling(cursor, library, output, lastDecls); output.Append("\n", indent, "{\n");
 			bool putNewLine = false;
 			int bitFieldCurrentBlockSize = 0;
 			int bitFieldTotalWidth = 0;
@@ -638,11 +666,7 @@ static class CBindings
 
 					let hasDoc = DocString(output, cursor, *newLine, doubleIndent);
 					output.Append(doubleIndent);
-					if (Clang.Cursor_IsAnonymous(Clang.GetTypeDeclaration(type)) != 0)
-					{
-						let attrs = GetAttributes(Clang.GetTypeDeclaration(type));
-						if (!attrs.IsNull) output.Append("[", attrs, "] ");
-					}
+					GetAttributes(cursor, library, .(GetString!(Clang.GetCursorSpelling(cursor))), type, output);
 					output.Append("public ");
 					Type(type, output, library);
 					output.Append(' '); AddSpelling(cursor, library, output); output.Append(";\n");
@@ -661,13 +685,17 @@ static class CBindings
 					*newLine = !hasDoc;
 				case .StructDecl, .UnionDecl when Clang.Cursor_IsAnonymous(cursor) != 0:
 					bool newLineBuf = false;
-					output.Append(doubleIndent, "[", GetAttributes(cursor), "] public using ");
+					output.Append(doubleIndent);
+					GetAttributes(cursor, library, .(GetString!(Clang.GetCursorSpelling(cursor))), default, output);
+					output.Append(" public using ");
 					Cursor(cursor, output, library, unit, doubleIndent, .Empty, null, &newLineBuf, inlinedType: true);
 					output..TrimEnd()..Append(";\n");
 					*newLine = false;
 				case .StructDecl, .UnionDecl, .EnumDecl when Clang.Cursor_IsAnonymous(cursor) == 0:
 					bool newLineBuf = false;
-					output.Append(doubleIndent, "[", GetAttributes(cursor), "] public ");
+					output.Append(doubleIndent);
+					GetAttributes(cursor, library, .(GetString!(Clang.GetCursorSpelling(cursor))), default, output);
+					output.Append(" public ");
 					Cursor(cursor, output, library, unit, "\t", .Empty, null, &newLineBuf, inlinedType: true);
 					output..TrimEnd()..Append('\n');
 					*newLine = false;
@@ -683,6 +711,15 @@ static class CBindings
 			*newLine = false;
 
 		case .EnumDecl:
+			bool packed = false;
+			Clang.VisitChildren(cursor, (cursor, parent, client_data) =>
+			{
+				if (cursor.kind != .PackedAttr) return .Continue;
+				bool* packed = (.)client_data;
+				*packed = true;
+				return .Break;
+			}, &packed);
+
 			bool anonymous = Clang.Cursor_IsAnonymous(cursor) != 0 && !inlinedType;
 			StringView spelling = .(GetString!(Clang.GetCursorSpelling(cursor)));
 			let block = library.getBlock?.Invoke(cursor, spelling);
@@ -696,9 +733,13 @@ static class CBindings
 				let hasDoc = DocString(output, cursor, *newLine, indent);
 				if (!hasDoc && *newLine) output.Append('\n');
 				if (!inlinedType) output.Append(indent);
-				if (includeAttrs) output.Append("[", GetAttributes(cursor), "] ");
-				output.Append(block.HasValue ? "public enum " : "enum "); AddSpelling(cursor, library, output, lastDecls);
-				output.Append(" : "); Type(Clang.GetEnumDeclIntegerType(cursor), output, library, true);
+				if (includeAttrs) GetAttributes(cursor, library, spelling, default, output);
+				output.Append(block.HasValue ? " public enum " : " enum "); AddSpelling(cursor, library, output, lastDecls);
+				if (!packed)
+				{
+					output.Append(" : ");
+					Type(Clang.GetEnumDeclIntegerType(cursor), output, library, true);
+				}
 				output.Append("\n", indent, "{\n");
 			}
 			bool putNewLine = false;
@@ -811,20 +852,10 @@ static class CBindings
 				{
 					hasDoc = DocString(output, cursor, *newLine, indent);
 					output.Append(indent);
-					do
+					attrs:
 					{
-						StringView attrs = null;
-						if (Clang.Cursor_IsAnonymous(Clang.GetTypeDeclaration(pointee)) != 0)
-							attrs = GetAttributes(Clang.GetTypeDeclaration(Clang.GetResultType(pointee)));
-						if (attrs.IsNull && library.customFunctionAttributes.IsEmpty) break;
-						output.Append("[");
-						if (!attrs.IsNull)
-						{
-							output.Append(attrs);
-							if (!library.customFunctionAttributes.IsEmpty)
-								output.Append(", ");
-						}
-						output.Append(library.customFunctionAttributes, "] ");
+						StringView[?] attrs = .(library.customFunctionAttributes);
+						GetAttributes(cursor, library, spelling, Clang.GetResultType(type), output, attrs);
 					}
 					output.Append(accessMod, "function ");
 					Type(Clang.GetResultType(pointee), output, library);
@@ -902,11 +933,7 @@ static class CBindings
 								outParam = true;
 								paramType = Clang.GetPointeeType(paramType);
 							}
-							if (Clang.Cursor_IsAnonymous(Clang.GetTypeDeclaration(type)) != 0)
-							{
-								let attrs = GetAttributes(Clang.GetTypeDeclaration(paramType));
-								if (!attrs.IsNull) output.Append("[", attrs, "] ");
-							}
+							GetAttributes(default, library, null, type, output);
 							if (outParam) output.Append("out ");
 						}
 						Type(paramType, output, library);
@@ -952,23 +979,15 @@ static class CBindings
 			switch (linkage)
 			{
 			case .External:
-				output.Append(indent, "[CLink");
-				if (Clang.Cursor_IsAnonymous(Clang.GetTypeDeclaration(type)) != 0)
-				{
-					let attrs = GetAttributes(Clang.GetTypeDeclaration(type));
-					if (!attrs.IsNull) output.Append(", ", attrs);
-				}
-				output.Append("] public static extern ");
+				output.Append(indent);
+				GetAttributes(cursor, library, .(GetString!(Clang.GetCursorSpelling(cursor))), type, output, StringView[?]("CLink"));
+				output.Append(" public static extern ");
 				Type(type, output, library); output.Append(' ');
 				AddSpelling(cursor, library, output, lastDecls); output.Append(";\n");
 			case .Internal when Clang.IsConstQualifiedType(type) != 0:
 				output.Append(indent);
-				if (Clang.Cursor_IsAnonymous(Clang.GetTypeDeclaration(type)) != 0)
-				{
-					let attrs = GetAttributes(Clang.GetTypeDeclaration(type));
-					if (!attrs.IsNull) output.Append("[", attrs, "] ");
-				}
-				output.Append("public const ");
+				GetAttributes(cursor, library, .(GetString!(Clang.GetCursorSpelling(cursor))), type, output);
+				output.Append(" public const ");
 				Type(type, output, library); output.Append(' ');
 				AddSpelling(cursor, library, output, lastDecls); output.Append(" = ");
 
