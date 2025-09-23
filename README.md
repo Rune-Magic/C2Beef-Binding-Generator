@@ -16,6 +16,7 @@ using Rune.CBindingGenerator;
 // allows you to customize the output
 CBindings.LibraryInfo libraryInfo = scope .()
 {
+    args = char8*[?]("-Isome/dir"),
     customFunctionAttributes = "CallingConvention(.StdCall)",
     modifyEnumCaseSpelling = scope (spelling, parentSpelling, strBuffer) =>
     {
