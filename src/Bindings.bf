@@ -10,43 +10,54 @@ namespace Rune.CBindingGenerator;
 
 static class CBindings
 {
-	/// args passed to clang, should always include '--language=c' or '-x c'
-	public static Span<char8*> args = null;
-
 	public enum Flags { None = 0, VulkanLike = 1 }
 	public class LibraryInfo
 	{
-		public Flags flags = .None;
+		public Flags flags { get; set; } = .None;
+
+		/// args passed to clang
+		public Span<char8*> args { get; set; } = null;
 
 		/// if true is returned then the cursor will be excluded from the bindings
-		public delegate bool(CXCursor cursor, StringView spelling) isBlackListed = null;
+		public delegate bool(CXCursor cursor, StringView spelling) isBlackListed { get; set; } = null;
 
 		/// if true then the typedef will be a handle and the underlying opaque struct will be excluded
-		public delegate bool(CXType type, StringView spelling, StringView typedefSpelling) isHandleUnderlyingOpaque = null;
+		public delegate bool(CXType type, StringView spelling, StringView typedefSpelling) isHandleUnderlyingOpaque { get; set; } = null;
 
 		/// custom attributes applied to extern functions and function pointers
 		/// e.g. CallingConvention(.StdCall)
-		public StringView customFunctionAttributes = "";
+		public StringView customFunctionAttributes { get; set; } = "";
 
 		/// custom attributes applied only applied to extern functions
 		/// e.g. Import("library.dll")
-		public StringView customLinkage = "";
+		public StringView customLinkage { get; set; } = "";
 
 		/// the functions will be put in the returned type via extensions
 		/// if null is returned the default block will be used ('static' or empty)
-		public delegate StringView?(CXCursor cursor, StringView spelling) getBlock = null;
+		public delegate StringView?(CXCursor cursor, StringView spelling) getBlock { get; set; } = null;
 
 		/// can be used to modify spellings of cursors and types
 		/// if non trimming modification are done, then allocate a new strBuffer object
 		/// NOTE: do NOT directly change the char data of `spelling'
 		/// @see_also CBindings.ModifySourceName
-		public delegate void(CXCursor cursor, ref StringView spelling, out String strBuffer) modifySourceName = null;
+		public delegate void(CXCursor cursor, ref StringView spelling, out String strBuffer) modifySourceName { get; set; } = null;
 
 		/// like modifySourceSpelling but for enum cases
-		public delegate void(ref StringView spelling, StringView parentSpelling, out String strBuffer) modifyEnumCaseSpelling = null;
+		public delegate void(ref StringView spelling, StringView parentSpelling, out String strBuffer) modifyEnumCaseSpelling { get; set; } = null;
 
 		/// add attributes to the binding declaration
-		public delegate bool(CXCursor cursor, StringView spelling, String output) addAttributes;
+		public delegate bool(CXCursor cursor, StringView spelling, String output) addAttributes { get; set; } = null;
+
+		public enum HandleTopLevelCursor_Result
+		{
+			/** will continue as normal */ Continue,
+			/** same as returning true from isBlackListed */ Skip,
+		}
+
+		/// will be called for all cursors that are not children of declarations
+		/// @param output set this to a `new String` if you want to write code or null otherwise
+		/// @param block if output is not null, then the block this to emit `output` to
+		public delegate HandleTopLevelCursor_Result(CXCursor cursor, CXTranslationUnit unit, StringView spelling, out String output, out StringView block) handleTopLevelCursor { get; set; } = null;
 	}
 
 	protected static volatile CXIndex index = Clang.CreateIndex(1, 1) ~ Clang.DisposeIndex(_);
@@ -55,14 +66,10 @@ static class CBindings
 	{
 		Runtime.Assert(File.Exists(.(header)));
 		CXTranslationUnit_Flags unitFlags = .SkipFunctionBodies | .DetailedPreprocessingRecord;
-		char8** argsPtr = args.Ptr; int32 argsCount = (.)args.Length;
-		char8* languageCArg = "--language=c"; 
-		if (args.IsNull)
-		{
-			argsPtr = &languageCArg;
-			argsCount = 1;
-		}
-		let unit = Clang.ParseTranslationUnit(index, header, argsPtr, argsCount, null, 0, (.)unitFlags);
+		char8*[] args = scope .[library.args.Length + 1];
+		library.args.CopyTo(args);
+		args[^1] = "--language=c";
+		let unit = Clang.ParseTranslationUnit(index, header, args.Ptr, (.)args.Count, null, 0, (.)unitFlags);
 		if (unit == null) Runtime.FatalError(scope $"Failed to parse {StringView(header)}");
 		defer Clang.DisposeTranslationUnit(unit);
 
@@ -95,11 +102,19 @@ static class CBindings
 			let filename = GetString!(Clang.GetFileName(file));
 			if (filename == null || !String.Equals(filename, header)) return .Continue;
 
-			if (library.isBlackListed != null)
+			if (library.isBlackListed != null || library.handleTopLevelCursor != null) do
 			{
 				StringView spelling = .(GetString!(Clang.GetCursorSpelling(cursor)));
-				if (library.isBlackListed(cursor, spelling))
-					return .Continue;
+				if (library.isBlackListed?.Invoke(cursor, spelling) == true) return .Continue;
+				if (library.handleTopLevelCursor == null) break;
+				let result = library.handleTopLevelCursor(cursor, unit, spelling, let outString, let block);
+				if (outString != null)
+				{
+					EnsureBlockBase(blockName, block, output, newLine);
+					output.Append(outString);
+					delete outString;
+				}
+				if (result case .Skip) return .Continue;
 			}
 
 			Cursor(cursor, output, library, unit, "", blockName, lastDecls, newLine, includeAttrs: true, noEnsureBlock: false);
@@ -223,6 +238,26 @@ static class CBindings
 			if (decl.kind == .NoDeclFound || Clang.Cursor_IsAnonymous(decl) == 0) return;
 			Cursor(decl, .(GetString!(Clang.GetCursorSpelling(decl))));
 		}
+	}
+
+	private static void EnsureBlockBase(String oldBlock, StringView newBlock, String output, bool* newLine)
+	{
+		if (oldBlock == newBlock) return;
+		if (!oldBlock.IsEmpty)
+		{
+			if (output.EndsWith("\n\n")) output.RemoveFromEnd(1);
+			output.Append("}\n\n");
+		}
+		else if (*newLine) output.Append('\n');
+		do
+		{
+			if (newBlock == "static") output.Append("static");
+			else if (newBlock.IsEmpty) break;
+			else output.Append("extension ", newBlock);
+			output.Append("\n{\n");
+		}
+		oldBlock.Set(newBlock);
+		*newLine = false;
 	}
 
 	protected static void Type(CXType type, String output, LibraryInfo library, bool includeAttrsInAnon = false)
@@ -456,34 +491,17 @@ static class CBindings
 		StringView indent = ?, doubleIndent = ?;
 		void EnsureBlock(StringView block)
 		{
-			defer
-			{
-				indentStr.Set(baseIndent);
-				doubleIndentStr..Set(baseIndent).Append('\t');
-				if (!blockName.IsEmpty)
-				{
-					indentStr.Append('\t');
-					doubleIndentStr.Append('\t');
-				}
-				indent = indentStr;
-				doubleIndent = doubleIndentStr;
-			}
-			if (noEnsureBlock || blockName == block) return;
+			if (!noEnsureBlock)
+				EnsureBlockBase(blockName, block, output, newLine);
+			indentStr.Set(baseIndent);
+			doubleIndentStr..Set(baseIndent).Append('\t');
 			if (!blockName.IsEmpty)
 			{
-				if (output.EndsWith("\n\n")) output.RemoveFromEnd(1);
-				output.Append("}\n\n");
+				indentStr.Append('\t');
+				doubleIndentStr.Append('\t');
 			}
-			else if (*newLine) output.Append('\n');
-			do
-			{
-				if (block == "static") output.Append("static");
-				else if (block.IsEmpty) break;
-				else output.Append("extension ", block);
-				output.Append("\n{\n");
-			}
-			blockName.Set(block);
-			*newLine = false;
+			indent = indentStr;
+			doubleIndent = doubleIndentStr;
 		}
 
 		switch (cursor.kind)
@@ -1013,34 +1031,29 @@ static class CBindings
 			defer Clang.DisposeTokens(unit, tokens, tokenCount);
 
 			if (tokenCount < 2 || Clang.Cursor_IsMacroFunctionLike(cursor) != 0) return;
-			String value = scope .();
-			bool hasLiteral = false;
-			for (int i = 1; i < tokenCount; i++)
-			{
-				if (Clang.GetTokenKind(tokens[i]) == .Literal) hasLiteral = true;
-				StringView spell = .(GetString!(Clang.GetTokenSpelling(unit, tokens[i])));
-				if (spell == ",") value.Append(", ");
-				else value.Append(spell);
-			}
-			if (!hasLiteral) return;
+			String value = scope .(16);
+			let exprType = MacroUtils.WriteTokens(Span<CXToken>(tokens, tokenCount)[1...], unit, value);
+			if (exprType case .UnuseableKeywords) return;
 
 			let block = library.getBlock?.Invoke(cursor, .(GetString!(Clang.GetCursorSpelling(cursor))));
 			EnsureBlock(block.HasValue ? block.Value : "static");
 			let hasDoc = DocString(output, cursor, *newLine, indent);
 			output.Append(indent, "public const ");
 
-			if (value[0] == '"') output.Append("c_char*");
-			else if (value[0] == '\'') output.Append("c_char");
-			else if (value.Contains('.') || value.Contains("f", true)) output.Append("float");
-			else if (value.Contains("NULL")) value.Replace("NULL", "null");
-			else if (value.Contains("ULL")) { output.Append("uint64"); value.Replace("ULL", ""); }
-			else if (value.Contains("(void*)")) output.Append("void*");
-			else output.Append(library.flags.HasFlag(.VulkanLike) ? "uint32" : "c_int");
-
-			output..Append(' ')..Append(GetString!(Clang.GetTokenSpelling(unit, tokens[0])))..Append(" = ");
-			if (value.Contains('~') || (!library.flags.HasFlag(.VulkanLike) && value == "0x80000000"))
-				output.Append("(.)");
-			output..Append(value)..Append(";\n");
+			switch (exprType)
+			{
+			case .Unknown, .ProbalePointerCast: output.Append("let");
+			case .Numeric: output.Append("c_int");
+			case .UnsignedInt: output.Append("uint32");
+			case .Floating: output.Append("double");
+			case .Float: output.Append("float");
+			case .Char: output.Append("c_char");
+			case .String: output.Append("c_char*");
+			case .UnuseableKeywords: return;
+			}
+			output.Append(' ');
+			AddSpelling(cursor, library, output);
+			output.Append(" = ", value, ";\n");
 
 			if (hasDoc) output.Append('\n');
 			*newLine = !hasDoc;

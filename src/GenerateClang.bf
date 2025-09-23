@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 
+using LibClang;
 using Rune.CBindingGenerator;
 
 namespace Rune.CBindingGenerator.GenerateClang;
@@ -28,9 +29,9 @@ static
 		);
 
 		Directory.CreateDirectory("Clang/clang-c");
-		CBindings.args = char8*[?]("--language=c", "-IClang");
 		CBindings.LibraryInfo libInfo = scope .()
 		{
+			args = char8*[?]("-IClang"),
 			customLinkage = "Import(Clang.dll)",
 
 			isHandleUnderlyingOpaque = scope (type, spelling, typedefSpelling) =>
@@ -80,7 +81,7 @@ static
 						break;
 					}
 				}
-			},
+			}
 		};
 		for (let file in clangFiles)
 		{

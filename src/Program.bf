@@ -124,8 +124,7 @@ static class Program
 		Assert!(!outputFile.IsEmpty, "Error: No output file (--output, -o)");
 		Assert!(!name.IsEmpty, "Error: No output namespace specified (--name, -n)");
 
-		CBindings.args = clangArgs;
-		CBindings.Generate(inputFile, outputFile, name, scope .() { flags=flags,
+		CBindings.Generate(inputFile, outputFile, name, scope .() { flags=flags, args=clangArgs,
 			isBlackListed = blackList.IsEmpty ? null : scope (cursor, spelling) => blackList.Contains(spelling),
 			customFunctionAttributes=functionAttrs, customLinkage=customLinkage }, params usingDependencies);
 
