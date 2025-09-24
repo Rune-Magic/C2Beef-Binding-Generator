@@ -122,9 +122,7 @@ static class CBindings
 			return .Continue;
 		}, &(output, &newLine, header, unit, library, blockName, lastDecls));
 
-		if (!blockName.IsEmpty)
-			output.Append("}\n");
-
+		EnsureBlockBase(blockName, "", output, &newLine);
 		File.WriteAllText(outputFile, output);
 	}
 
@@ -374,100 +372,114 @@ static class CBindings
 	{
 		static bool DocString(String output, CXCursor cursor, bool newLine, StringView indent)
 		{
-			bool nonParsedCommand = false;
-			int lastTextNewLineIdx = -1;
-			bool Comment(CXComment comment)
+			char8 nextChar = 0;
+			bool Comment(CXComment comment, int extraIndent, bool topLevel = false)
 			{
+				mixin PrintNextChar()
+				{
+					if (nextChar != 0)
+					{
+						output.Append(nextChar);
+						if (nextChar == '\n')
+							output..Append(indent, " *  ")..Append(' ', extraIndent);
+					}
+				}
+
 				switch (Clang.Comment_GetKind(comment))
 				{
 				case .Null: return false;
 				case .Text:
-					StringView str = .(GetString!(Clang.TextComment_GetText(comment)))..TrimStart();
-					if (str == "@" || str == "\\")
+					StringView str = .(GetString!(Clang.TextComment_GetText(comment)))..Trim();
+					if (str == "<" || str == "/" || str == ">")
 					{
-						if (lastTextNewLineIdx > 0)
-							output.RemoveToEnd(lastTextNewLineIdx);
+						if (str == "<" && nextChar == ' ')
+							output.Append(' ');
+						output.Append(str);
+						nextChar = str == ">" ? ' ' : 0;
+					}
+					else if (str == "@" || str == "\\")
+					{
+						PrintNextChar!();
 						output.Append('@');
-						nonParsedCommand = true;
+						nextChar = 0;
 					}
 					else
 					{
+						PrintNextChar!();
 						output.Append(str);
-						if (nonParsedCommand)
-						{
-							output.Append(' ');
-							nonParsedCommand = false;
-							lastTextNewLineIdx = -1;
-						}
-						else
-						{
-							lastTextNewLineIdx = output.Length;
-							output.Append('\n');
-						}
+						nextChar = Clang.InlineContentComment_HasTrailingNewline(comment) == 0 ? ((str.IsEmpty || str[^1].IsLetterOrDigit || str[^1] == ':') ? ' ' : 0) : '\n';
 					}
 				case .InlineCommand:
-					if (lastTextNewLineIdx > 0)
-						output.RemoveToEnd(lastTextNewLineIdx);
+					PrintNextChar!();
 					output..Append('@')..Append(GetString!(Clang.InlineCommandComment_GetCommandName(comment)));
 					let argc = Clang.InlineCommandComment_GetNumArgs(comment);
 					for (let i < argc)
 						output..Append(' ')..Append(GetString!(Clang.InlineCommandComment_GetArgText(comment, i)));
-					if (Clang.InlineContentComment_HasTrailingNewline(comment) != 0)
-					{
-						lastTextNewLineIdx = output.Length;
-						output.Append('\n');
-					}
-					else
-					{
-						output.Append(' ');
-						nonParsedCommand = true;
-					}
+					nextChar = Clang.InlineContentComment_HasTrailingNewline(comment) == 0 ? ' ' : '\n';
 				case .HTMLStartTag, .HTMLEndTag:
 					output.Append(GetString!(Clang.HTMLTagComment_GetAsString(comment)));
+					nextChar = 0;
 				case .BlockCommand:
-					output..Append('@')..Append(GetString!(Clang.BlockCommandComment_GetCommandName(comment)))..Append(' ');
+					StringView cmd = .(GetString!(Clang.BlockCommandComment_GetCommandName(comment)));
+					int extra = cmd.Length + 2;
+					output..Append('@')..Append(cmd);
 					let argc = Clang.BlockCommandComment_GetNumArgs(comment);
 					for (let i < argc)
-						output..Append(GetString!(Clang.BlockCommandComment_GetArgText(comment, i)))..Append(' ');
-					Comment(Clang.BlockCommandComment_GetParagraph(comment));
+					{
+						StringView arg = .(GetString!(Clang.BlockCommandComment_GetArgText(comment, i)));
+						output..Append(' ')..Append(arg);
+						extra = arg.Length + 1;
+					}
+					nextChar = ' ';
+					Comment(Clang.BlockCommandComment_GetParagraph(comment), extra);
 				case .ParamCommand:
-					output..Append("@param ")..Append(GetString!(Clang.ParamCommandComment_GetParamName(comment)))..Append(' ');
-					Comment(Clang.BlockCommandComment_GetParagraph(comment));
+					StringView paramName = .(GetString!(Clang.ParamCommandComment_GetParamName(comment)));
+					output..Append("@param ")..Append(paramName);
+					nextChar = ' ';
+					Comment(Clang.BlockCommandComment_GetParagraph(comment), paramName.Length + "@param ".Length + 1);
 				case .TParamCommand:
-					output..Append("@tparam ")..Append(GetString!(Clang.TParamCommandComment_GetParamName(comment)))..Append(' ');
-					Comment(Clang.BlockCommandComment_GetParagraph(comment));
+					StringView paramName = .(GetString!(Clang.TParamCommandComment_GetParamName(comment)));
+					output..Append("@tparam ")..Append(paramName);
+					nextChar = ' ';
+					Comment(Clang.BlockCommandComment_GetParagraph(comment), paramName.Length + "@tparam ".Length + 1);
 				case .VerbatimBlockLine:
+					PrintNextChar!();
 					StringView str = .(GetString!(Clang.VerbatimBlockLineComment_GetText(comment)));
-					if (str.StartsWith(' ')) str.RemoveFromStart(1);
-					if (str.StartsWith(' ')) str.RemoveFromStart(1);
-					if (str.StartsWith(' ')) str.RemoveFromStart(1);
-					output..Append(str)..Append('\n');
+					output.Append(str);
+					nextChar = '\n';
 				case .VerbatimLine:
-					output..Append(GetString!(Clang.VerbatimLineComment_GetText(comment)))..Append('\n');
+					PrintNextChar!();
+					output..Append('`')..Append(GetString!(Clang.VerbatimLineComment_GetText(comment)))..Append('`');
 				case .FullComment, .VerbatimBlockCommand, .Paragraph:
+					if (topLevel) PrintNextChar!();
 					switch (_)
 					{
 					case .FullComment:
 						if (newLine) output.Append('\n');
 						output.Append(indent, "/** ");
-						defer:: output.Append(indent, " */\n");
+						defer:: output.Append("\n", indent, " */\n");
 					case .VerbatimBlockCommand:
-						output.Append("```\n");
-						defer:: output.Append(indent, " *  ```\n");
+						output.Append("```");
+						nextChar = '\n';
+						defer::
+						{
+							PrintNextChar!();
+							output.Append("```");
+						}
+					case .Paragraph:
+						defer:: { nextChar = '\n'; }
 					default:
 					}
 
 					let childCount = Clang.Comment_GetNumChildren(comment);
 					for (let i < childCount)
 					{
-						if (output.EndsWith('\n')) output.Append(indent, " *  ");
-						Comment(Clang.Comment_GetChild(comment, i));
+						Comment(Clang.Comment_GetChild(comment, i), extraIndent, _ case .FullComment);
 					}
-					if (!output.EndsWith('\n')) output.Append('\n');
 				}
 				return true;
 			}
-			return Comment(Clang.Cursor_GetParsedComment(cursor));
+			return Comment(Clang.Cursor_GetParsedComment(cursor), 0);
 		}
 
 		static bool AddSpelling(CXCursor cursor, LibraryInfo library, String output, String lastDecls = null)
