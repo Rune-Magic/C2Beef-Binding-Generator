@@ -76,12 +76,13 @@ static class MacroUtils
 		String, // contains string literal
 		ProbalePointerCast, // contains a '*' followed by a ')'
 
-		UnuseableKeywords, // contains keywords that begin with '__'
+		UnuseableKeywords, // contains keywords that begins with '__' or contains '#' tokens
 	}
 
-	public static ExprTypeGuess WriteTokens(Span<CXToken> tokens, CXTranslationUnit unit, String output)
+	public static ExprTypeGuess WriteTokens(Span<CXToken> tokens, CXTranslationUnit unit, String output, delegate bool(CXToken token, StringView tokenSpelling, int tokenIdx, String outString) writeToken = null)
 	{
 		bool hasLhs = false, lastStar = false;
+		CXTokenKind lastTokenKind = (.)-1;
 		ExprTypeGuess guess = .Unknown;
 		mixin SetGuess(ExprTypeGuess newGuess)
 		{
@@ -90,41 +91,61 @@ static class MacroUtils
 		for (let token in tokens)
 		{
 			char8* spelling = CBindings.GetString!(Clang.GetTokenSpelling(unit, token));
+			defer
+			{
+				lastStar = *spelling == '*';
+				lastTokenKind = Clang.GetTokenKind(token);
+			}
+			var output;
+			if (Clang.GetTokenKind(token) == .Identifier && lastTokenKind == .Literal && guess == .String)
+				output.Append(" + ");
+			if (writeToken != null)
+			{
+				if (writeToken(token, .(spelling), @token.Index, output))
+					output = null;
+			}
 			switch (Clang.GetTokenKind(token))
 			{
 			case .Punctuation:
 				switch (*spelling)
 				{
+				case '#': SetGuess!(ExprTypeGuess.UnuseableKeywords);
 				case '+', '-', '*', '/', '|', '&', '^', '>', '<', '=':
-					if (hasLhs) output.Append(' ');
-					output.Append(spelling);
-					if (hasLhs) output.Append(' ');
+					if (hasLhs) output?.Append(' ');
+					output?.Append(spelling);
+					if (hasLhs) output?.Append(' ');
 					hasLhs = true;
 				case ',':
-					output.Append(", ");
+					output?.Append(", ");
 					hasLhs = false;
 				case ')':
 					if (lastStar) SetGuess!(ExprTypeGuess.ProbalePointerCast);
-					output.Append(')');
+					output?.Append(')');
 					hasLhs = true;
 				default:
-					output.Append(spelling);
+					output?.Append(spelling);
 					hasLhs = false;
 				}
 			case .Comment:
 				StringView spellingStr = .(spelling);
 				if (spellingStr.StartsWith("//"))
-					output.Append("/*", spellingStr[2...], "*/");
+					output?.Append("/*", spellingStr[2...], "*/");
 				else
-					output.Append(spellingStr);
+					output?.Append(spellingStr);
 			case .Literal:
 				StringView spellingStr = .(spelling);
 				bool number = false, hex = false;
 				literalType: for (let c in spellingStr)
 					switch (c)
 					{
-					case '\'': SetGuess!(ExprTypeGuess.Char  ); break literalType;
-					case '\"': SetGuess!(ExprTypeGuess.String); break literalType;
+					case '\'':
+						SetGuess!(ExprTypeGuess.Char);
+						break literalType;
+					case '\"':
+						SetGuess!(ExprTypeGuess.String);
+						if (lastTokenKind == .Identifier && guess == .String)
+							output?.Append(" + ");
+						break literalType;
 					case 'f', 'F' when number && !hex: SetGuess!(ExprTypeGuess.Float);
 					case '.' when number: SetGuess!(ExprTypeGuess.Floating);
 					case 'u', 'U' when number: SetGuess!(ExprTypeGuess.UnsignedInt);
@@ -133,18 +154,16 @@ static class MacroUtils
 					case 'l', 'L' when number && (spellingStr.EndsWith('l') || spellingStr.EndsWith('L')):
 						spellingStr.RemoveFromEnd(1);
 					}
-				output.Append(spellingStr);
+				output?.Append(spellingStr);
 				hasLhs = true;
-			case .Keyword:
-				if (StringView(spelling).StartsWith("__"))
+			case .Keyword, .Identifier:
+				StringView spellingView = .(spelling);
+				if (spellingView.StartsWith("__") || spellingView == "_Pragma")
 					SetGuess!(ExprTypeGuess.UnuseableKeywords);
-				fallthrough;
-			case .Identifier:
-				if (hasLhs) output.Append(' ');
-				output.Append(spelling);
+				else if (hasLhs) output?.Append(' ');
+				output?.Append(spellingView);
 				hasLhs = true;
 			}
-			lastStar = *spelling == '*';
 		}
 		return guess;
 	}

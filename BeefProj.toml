@@ -1,5 +1,5 @@
 FileVersion = 1
-Dependencies = {corlib = "*", Clang-Beef = {Git = "https://github.com/Rune-Magic/Clang-Beef"}}
+Dependencies = {Clang-Beef = {Git = "https://github.com/Rune-Magic/Clang-Beef"}}
 
 [Project]
 Name = "Rune's C2Beef Binding Generator"

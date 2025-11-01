@@ -31,7 +31,7 @@ static
 		Directory.CreateDirectory("Clang/clang-c");
 		CBindings.LibraryInfo libInfo = scope .()
 		{
-			args = char8*[?]("-IClang"),
+			args = char8*[?]("-IClang", "-DCINDEX_LINKAGE"),
 			customLinkage = "Import(Clang.dll)",
 
 			isHandleUnderlyingOpaque = scope (type, spelling, typedefSpelling) =>
